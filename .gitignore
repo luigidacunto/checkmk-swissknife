@@ -1,0 +1,8 @@
+
+### My Personal test file for Dev only ###
+/.*/
+/*.bat
+/*.ps1
+/*.md
+!README.md
+!CHANGELOG.md
