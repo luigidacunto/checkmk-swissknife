@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.3
+// @version      2.4
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -42,6 +42,9 @@
     try { return new URLSearchParams(iDoc.location.search).get('mode') || ''; }
     catch (e) { return ''; }
   }
+
+  // Pagine che supportano gli accordion badge (stessa struttura form_edit_host + table.nform)
+  const ACCORDION_MODES = new Set(['edit_host', 'bulkedit']);
 
   // Inietta CSS nel documento target (una sola volta, deduplica per id)
   function injectStyles(iDoc, id, css) {
@@ -557,8 +560,8 @@
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
       return;
     }
-    // Guard URL: attiva solo sulla pagina edit_host
-    if (getPageMode(iDoc) !== 'edit_host') return;
+    // Guard URL: attiva solo sulle pagine con accordion supportati
+    if (!ACCORDION_MODES.has(getPageMode(iDoc))) return;
     if (!initAccordionCheckedCounts(iDoc)) {
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
     }
@@ -571,9 +574,9 @@
     attemptsAcc    = 0;
     // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
-    // Accordion: solo su edit_host. Se mode è vuoto (iframe non ancora caricato)
-    // si schedula comunque: tryInitAccordionCounts farà il guard URL.
-    if (!mode || mode === 'edit_host') {
+    // Accordion: solo sulle pagine in ACCORDION_MODES. Se mode è vuoto (iframe non ancora
+    // caricato) si schedula comunque: tryInitAccordionCounts farà il guard URL.
+    if (!mode || ACCORDION_MODES.has(mode)) {
       setTimeout(tryInitAccordionCounts, 800);
     }
   }
@@ -594,7 +597,7 @@
       attemptsFolder = 0;
       setTimeout(tryEnhanceFolderSelect, 300);
     }
-    if (mode === 'edit_host') {
+    if (ACCORDION_MODES.has(mode)) {
       const form = iDoc.getElementById('form_edit_host');
       if (form && !form.dataset.cmkAccBadge) {
         attemptsAcc = 0;
