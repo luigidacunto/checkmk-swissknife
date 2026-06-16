@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.2
+// @version      2.3
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -35,6 +35,12 @@
       return document;
     }
     return null;
+  }
+
+  // Legge il parametro "mode" dall'URL del documento target senza accedere al DOM
+  function getPageMode(iDoc) {
+    try { return new URLSearchParams(iDoc.location.search).get('mode') || ''; }
+    catch (e) { return ''; }
   }
 
   // Inietta CSS nel documento target (una sola volta, deduplica per id)
@@ -551,17 +557,25 @@
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
       return;
     }
-    if (!iDoc.getElementById('form_edit_host')) return;
+    // Guard URL: attiva solo sulla pagina edit_host
+    if (getPageMode(iDoc) !== 'edit_host') return;
     if (!initAccordionCheckedCounts(iDoc)) {
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
     }
   }
 
   function init() {
+    const iDoc = getWatoDoc(FOLDER_SELECT_ID);
+    const mode = getPageMode(iDoc);
     attemptsFolder = 0;
     attemptsAcc    = 0;
+    // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
-    setTimeout(tryInitAccordionCounts, 800);
+    // Accordion: solo su edit_host. Se mode è vuoto (iframe non ancora caricato)
+    // si schedula comunque: tryInitAccordionCounts farà il guard URL.
+    if (!mode || mode === 'edit_host') {
+      setTimeout(tryInitAccordionCounts, 800);
+    }
   }
 
   if (document.readyState === 'complete') {
@@ -574,15 +588,18 @@
   new MutationObserver(() => {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     if (!iDoc) return;
+    const mode = getPageMode(iDoc);
     const sel = iDoc.getElementById(FOLDER_SELECT_ID);
     if (sel && sel.classList.contains('select2-hidden-accessible') && !sel.dataset.cmkEnhanced) {
       attemptsFolder = 0;
       setTimeout(tryEnhanceFolderSelect, 300);
     }
-    const form = iDoc.getElementById('form_edit_host');
-    if (form && !form.dataset.cmkAccBadge) {
-      attemptsAcc = 0;
-      setTimeout(tryInitAccordionCounts, 300);
+    if (mode === 'edit_host') {
+      const form = iDoc.getElementById('form_edit_host');
+      if (form && !form.dataset.cmkAccBadge) {
+        attemptsAcc = 0;
+        setTimeout(tryInitAccordionCounts, 300);
+      }
     }
   }).observe(document.body, { childList: true, subtree: true });
 
