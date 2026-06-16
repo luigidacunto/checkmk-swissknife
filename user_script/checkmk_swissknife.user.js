@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.4
+// @version      2.5
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -457,12 +457,31 @@
     }
   }
 
+  function updateDiffBadge(td, iWin) {
+    const table = td.closest('table.nform');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const count = Array.from(tbody.querySelectorAll('div.inherited')).filter(el =>
+      iWin.getComputedStyle(el).display !== 'none' && el.textContent.includes('This value differs')
+    ).length;
+    const badge = td.querySelector('.cmk-sk-diff-count');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = `≠${count}`;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
   function initAccordionCheckedCounts(iDoc) {
     const form = iDoc.getElementById('form_edit_host');
     if (!form) return false;
     if (form.dataset.cmkAccBadge === '1') return true;
 
     const iWin = iDoc.defaultView;
+    const isBulkEdit = getPageMode(iDoc) === 'bulkedit';
 
     injectStyles(iDoc, 'cmk-sk-acc-badge-styles', `
       .cmk-sk-acc-count {
@@ -480,6 +499,16 @@
         padding: 1px 6px;
         background: #5ba4e5;
         color: #000;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: bold;
+        vertical-align: middle;
+      }
+      .cmk-sk-diff-count {
+        margin-left: 4px;
+        padding: 1px 6px;
+        background: #e55b5b;
+        color: #fff;
         border-radius: 9px;
         font-size: 11px;
         font-weight: bold;
@@ -510,13 +539,22 @@
         td.appendChild(badgeInh);
       }
 
+      if (isBulkEdit) {
+        const badgeDiff = iDoc.createElement('span');
+        badgeDiff.className = 'cmk-sk-diff-count';
+        badgeDiff.style.display = 'none';
+        badgeInh.after(badgeDiff);
+      }
+
       updateAccordionBadge(td);
       updateInheritedBadge(td, iWin);
+      if (isBulkEdit) updateDiffBadge(td, iWin);
 
       tbody.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox') {
           updateAccordionBadge(td);
           updateInheritedBadge(td, iWin);
+          if (isBulkEdit) updateDiffBadge(td, iWin);
         }
       });
     });
