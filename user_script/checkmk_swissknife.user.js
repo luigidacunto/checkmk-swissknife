@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.0
+// @version      2.1
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
-// @homepageURL  https://gitlab.luigidacunto.com/consultant/checkmk-swissknife
+// @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
 // @updateURL    https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @downloadURL  https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @include      /^https?:\/\/.+\/check_mk\/(index|wato)\.py/
@@ -407,15 +407,87 @@
 
 
   // =========================================================================
+  // FEATURE: Accordion Checked Count Badge
+  //
+  // Mostra nel titolo di ogni accordion della pagina edit_host il numero
+  // di checkbox attive nel gruppo. Es: "Services - DB (1)".
+  // Il contatore si aggiorna in tempo reale al cambio delle checkbox.
+  // =========================================================================
+
+  function updateAccordionBadge(td) {
+    const table = td.closest('table.nform');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const checked = tbody.querySelectorAll('input[type=checkbox]:checked').length;
+    const badge = td.querySelector('.cmk-sk-acc-count');
+    if (!badge) return;
+    if (checked > 0) {
+      badge.textContent = `(${checked})`;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function initAccordionCheckedCounts(iDoc) {
+    const form = iDoc.getElementById('form_edit_host');
+    if (!form) return false;
+    if (form.dataset.cmkAccBadge === '1') return true;
+
+    injectStyles(iDoc, 'cmk-sk-acc-badge-styles', `
+      .cmk-sk-acc-count {
+        margin-left: 6px;
+        padding: 1px 6px;
+        background: #f0a500;
+        color: #000;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: bold;
+        vertical-align: middle;
+      }
+    `);
+
+    iDoc.querySelectorAll('table.nform thead tr.heading td').forEach(td => {
+      const table = td.closest('table.nform');
+      const tbody = table?.querySelector('tbody');
+      if (!tbody) return;
+
+      const badge = iDoc.createElement('span');
+      badge.className = 'cmk-sk-acc-count';
+      badge.style.display = 'none';
+
+      const img = td.querySelector('img.treeangle');
+      const afterImg = img?.nextSibling;
+      if (afterImg) {
+        afterImg.after(badge);
+      } else {
+        td.appendChild(badge);
+      }
+
+      updateAccordionBadge(td);
+
+      tbody.addEventListener('change', (e) => {
+        if (e.target.type === 'checkbox') updateAccordionBadge(td);
+      });
+    });
+
+    form.dataset.cmkAccBadge = '1';
+    return true;
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
-  let attempts = 0;
+  let attemptsFolder = 0;
+  let attemptsAcc    = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     if (!iDoc || !iDoc.body) {
-      if (++attempts < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
+      if (++attemptsFolder < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
       return;
     }
 
@@ -426,16 +498,30 @@
     }
 
     if (!sel.classList.contains('select2-hidden-accessible')) {
-      if (++attempts < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
+      if (++attemptsFolder < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
       return;
     }
 
     buildCustomSearchOverlay(iDoc, sel);
   }
 
+  function tryInitAccordionCounts() {
+    const iDoc = getWatoDoc('form_edit_host');
+    if (!iDoc || !iDoc.body) {
+      if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
+      return;
+    }
+    if (!iDoc.getElementById('form_edit_host')) return;
+    if (!initAccordionCheckedCounts(iDoc)) {
+      if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
+    }
+  }
+
   function init() {
-    attempts = 0;
+    attemptsFolder = 0;
+    attemptsAcc    = 0;
     setTimeout(tryEnhanceFolderSelect, 800);
+    setTimeout(tryInitAccordionCounts, 800);
   }
 
   if (document.readyState === 'complete') {
@@ -450,8 +536,13 @@
     if (!iDoc) return;
     const sel = iDoc.getElementById(FOLDER_SELECT_ID);
     if (sel && sel.classList.contains('select2-hidden-accessible') && !sel.dataset.cmkEnhanced) {
-      attempts = 0;
+      attemptsFolder = 0;
       setTimeout(tryEnhanceFolderSelect, 300);
+    }
+    const form = iDoc.getElementById('form_edit_host');
+    if (form && !form.dataset.cmkAccBadge) {
+      attemptsAcc = 0;
+      setTimeout(tryInitAccordionCounts, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
