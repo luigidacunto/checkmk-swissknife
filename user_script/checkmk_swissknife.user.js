@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.1
+// @version      2.2
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -430,16 +430,46 @@
     }
   }
 
+  function updateInheritedBadge(td, iWin) {
+    const table = td.closest('table.nform');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const count = Array.from(tbody.querySelectorAll('div.inherited')).filter(el =>
+      iWin.getComputedStyle(el).display !== 'none' && el.textContent.includes('Inherited from')
+    ).length;
+    const badge = td.querySelector('.cmk-sk-inh-count');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = `↑${count}`;
+      badge.style.display = 'inline';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
   function initAccordionCheckedCounts(iDoc) {
     const form = iDoc.getElementById('form_edit_host');
     if (!form) return false;
     if (form.dataset.cmkAccBadge === '1') return true;
+
+    const iWin = iDoc.defaultView;
 
     injectStyles(iDoc, 'cmk-sk-acc-badge-styles', `
       .cmk-sk-acc-count {
         margin-left: 6px;
         padding: 1px 6px;
         background: #f0a500;
+        color: #000;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: bold;
+        vertical-align: middle;
+      }
+      .cmk-sk-inh-count {
+        margin-left: 4px;
+        padding: 1px 6px;
+        background: #5ba4e5;
         color: #000;
         border-radius: 9px;
         font-size: 11px;
@@ -457,18 +487,28 @@
       badge.className = 'cmk-sk-acc-count';
       badge.style.display = 'none';
 
+      const badgeInh = iDoc.createElement('span');
+      badgeInh.className = 'cmk-sk-inh-count';
+      badgeInh.style.display = 'none';
+
       const img = td.querySelector('img.treeangle');
       const afterImg = img?.nextSibling;
       if (afterImg) {
         afterImg.after(badge);
+        badge.after(badgeInh);
       } else {
         td.appendChild(badge);
+        td.appendChild(badgeInh);
       }
 
       updateAccordionBadge(td);
+      updateInheritedBadge(td, iWin);
 
       tbody.addEventListener('change', (e) => {
-        if (e.target.type === 'checkbox') updateAccordionBadge(td);
+        if (e.target.type === 'checkbox') {
+          updateAccordionBadge(td);
+          updateInheritedBadge(td, iWin);
+        }
       });
     });
 
