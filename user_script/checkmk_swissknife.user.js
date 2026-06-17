@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.6.0
+// @version      2.7.0
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -627,6 +627,91 @@
 
 
   // =========================================================================
+  // FEATURE: Rule Match Status Highlight
+  //
+  // Nelle pagine mode=edit_ruleset aperte con contesto host/service (parametri
+  // host= e service= nell'URL), evidenzia le righe che matchano (verde) e
+  // attenua quelle che non matchano (grigio), sostituendo le icone poco
+  // visibili icon_checkmark e icon_hyphen con badge colorati.
+  // =========================================================================
+
+  function highlightRuleMatchStatus(doc) {
+    if (doc.body.dataset.cmkMatchHighlight === '1') return;
+
+    const matchImgs   = doc.querySelectorAll('img.icon[title^="This rule matches"]');
+    const noMatchImgs = doc.querySelectorAll('img.icon[title^="This rule does not match"]');
+    if (!matchImgs.length && !noMatchImgs.length) return;
+
+    injectStyles(doc, 'cmk-sk-match-styles', `
+      tr.cmk-sk-rule-match > td:first-child {
+        border-left: 4px solid #4caf50 !important;
+      }
+      tr.cmk-sk-rule-match {
+        background: rgba(76, 175, 80, 0.10) !important;
+      }
+      tr.cmk-sk-rule-nomatch {
+        opacity: 0.45;
+      }
+      tr.cmk-sk-rule-nomatch > td:first-child {
+        border-left: 4px solid #555 !important;
+      }
+      .cmk-sk-match-badge {
+        display: inline-block;
+        background: #4caf50;
+        color: #fff;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-family: monospace;
+        vertical-align: middle;
+        cursor: default;
+        letter-spacing: 0.03em;
+      }
+      .cmk-sk-nomatch-badge {
+        display: inline-block;
+        background: #444;
+        color: #888;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-family: monospace;
+        vertical-align: middle;
+        cursor: default;
+        letter-spacing: 0.03em;
+      }
+    `);
+
+    matchImgs.forEach(img => {
+      const row = img.closest('tr');
+      if (!row) return;
+      row.classList.add('cmk-sk-rule-match');
+      const badge = doc.createElement('span');
+      badge.className = 'cmk-sk-match-badge';
+      badge.title = img.title;
+      badge.textContent = '✓ match';
+      img.replaceWith(badge);
+    });
+
+    noMatchImgs.forEach(img => {
+      const row = img.closest('tr');
+      if (!row) return;
+      row.classList.add('cmk-sk-rule-nomatch');
+      const badge = doc.createElement('span');
+      badge.className = 'cmk-sk-nomatch-badge';
+      badge.title = img.title;
+      badge.textContent = '✗ no match';
+      img.replaceWith(badge);
+    });
+
+    doc.body.dataset.cmkMatchHighlight = '1';
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
@@ -668,14 +753,15 @@
     }
   }
 
-  function tryHighlightIneffective() {
+  function tryHighlightRuleset() {
     const doc = getTargetDoc();
     if (!doc || !doc.body) {
-      if (++attemptsRuleset < MAX_ATTEMPTS) setTimeout(tryHighlightIneffective, POLL_INTERVAL_MS);
+      if (++attemptsRuleset < MAX_ATTEMPTS) setTimeout(tryHighlightRuleset, POLL_INTERVAL_MS);
       return;
     }
     if (getPageMode(doc) !== 'edit_ruleset') return;
     highlightIneffectiveRules(doc);
+    highlightRuleMatchStatus(doc);
   }
 
   function init() {
@@ -692,9 +778,9 @@
     if (!mode || ACCORDION_MODES.has(mode)) {
       setTimeout(tryInitAccordionCounts, 800);
     }
-    // Ineffective rule highlight: solo su edit_ruleset.
+    // Ruleset enhancements (ineffective + match status): solo su edit_ruleset.
     if (!targetMode || targetMode === 'edit_ruleset') {
-      setTimeout(tryHighlightIneffective, 300);
+      setTimeout(tryHighlightRuleset, 300);
     }
   }
 
@@ -721,9 +807,10 @@
         setTimeout(tryInitAccordionCounts, 300);
       }
     }
-    if (mode === 'edit_ruleset' && iDoc.body && !iDoc.body.dataset.cmkIneffHighlight) {
+    if (mode === 'edit_ruleset' && iDoc.body &&
+        (!iDoc.body.dataset.cmkIneffHighlight || !iDoc.body.dataset.cmkMatchHighlight)) {
       attemptsRuleset = 0;
-      setTimeout(tryHighlightIneffective, 300);
+      setTimeout(tryHighlightRuleset, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
