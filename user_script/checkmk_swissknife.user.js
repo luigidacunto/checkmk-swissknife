@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.5
+// @version      2.6
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -41,6 +41,14 @@
   function getPageMode(iDoc) {
     try { return new URLSearchParams(iDoc.location.search).get('mode') || ''; }
     catch (e) { return ''; }
+  }
+
+  // Restituisce il documento su cui operare, gestendo sia il caso iframe (index.py con
+  // sidebar) che il caso direct (wato.py aperto senza sidebar, nessun iframe presente).
+  function getTargetDoc() {
+    const iframe = document.querySelector('iframe[name="main"], iframe#main');
+    if (iframe) { try { return iframe.contentDocument; } catch (e) { return null; } }
+    return document;
   }
 
   // Pagine che supportano gli accordion badge (stessa struttura form_edit_host + table.nform)
@@ -565,11 +573,66 @@
 
 
   // =========================================================================
+  // FEATURE: Ineffective Rule Highlight
+  //
+  // Nelle pagine mode=edit_ruleset sostituisce l'icona poco visibile
+  // "icon_hyphen.svg" (title="Ineffective rule") con un badge colorato
+  // e aggiunge un bordo sinistro alla riga.
+  // Funziona sia su wato.py diretto (no iframe) che dentro index.py (iframe).
+  // =========================================================================
+
+  function highlightIneffectiveRules(doc) {
+    if (doc.body.dataset.cmkIneffHighlight === '1') return;
+
+    const imgs = doc.querySelectorAll('img.icon[title="Ineffective rule"]');
+    if (!imgs.length) return;
+
+    injectStyles(doc, 'cmk-sk-ineff-styles', `
+      tr.cmk-sk-ineffective > td:first-child {
+        border-left: 4px solid #e5a500 !important;
+      }
+      tr.cmk-sk-ineffective {
+        background: rgba(229, 165, 0, 0.08) !important;
+      }
+      .cmk-sk-ineff-badge {
+        display: inline-block;
+        background: #e5a500;
+        color: #000;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-family: monospace;
+        vertical-align: middle;
+        cursor: default;
+        letter-spacing: 0.03em;
+      }
+    `);
+
+    imgs.forEach(img => {
+      const row = img.closest('tr');
+      if (!row || row.classList.contains('cmk-sk-ineffective')) return;
+      row.classList.add('cmk-sk-ineffective');
+
+      const badge = doc.createElement('span');
+      badge.className = 'cmk-sk-ineff-badge';
+      badge.title = 'Ineffective rule';
+      badge.textContent = '⚠ ineffective';
+      img.replaceWith(badge);
+    });
+
+    doc.body.dataset.cmkIneffHighlight = '1';
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
-  let attemptsFolder = 0;
-  let attemptsAcc    = 0;
+  let attemptsFolder   = 0;
+  let attemptsAcc      = 0;
+  let attemptsRuleset  = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -605,17 +668,33 @@
     }
   }
 
+  function tryHighlightIneffective() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsRuleset < MAX_ATTEMPTS) setTimeout(tryHighlightIneffective, POLL_INTERVAL_MS);
+      return;
+    }
+    if (getPageMode(doc) !== 'edit_ruleset') return;
+    highlightIneffectiveRules(doc);
+  }
+
   function init() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     const mode = getPageMode(iDoc);
-    attemptsFolder = 0;
-    attemptsAcc    = 0;
+    const targetDoc = getTargetDoc();
+    const targetMode = getPageMode(targetDoc);
+    attemptsFolder  = 0;
+    attemptsAcc     = 0;
+    attemptsRuleset = 0;
     // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
-    // Accordion: solo sulle pagine in ACCORDION_MODES. Se mode è vuoto (iframe non ancora
-    // caricato) si schedula comunque: tryInitAccordionCounts farà il guard URL.
+    // Accordion: solo sulle pagine in ACCORDION_MODES.
     if (!mode || ACCORDION_MODES.has(mode)) {
       setTimeout(tryInitAccordionCounts, 800);
+    }
+    // Ineffective rule highlight: solo su edit_ruleset.
+    if (!targetMode || targetMode === 'edit_ruleset') {
+      setTimeout(tryHighlightIneffective, 300);
     }
   }
 
@@ -641,6 +720,10 @@
         attemptsAcc = 0;
         setTimeout(tryInitAccordionCounts, 300);
       }
+    }
+    if (mode === 'edit_ruleset' && iDoc.body && !iDoc.body.dataset.cmkIneffHighlight) {
+      attemptsRuleset = 0;
+      setTimeout(tryHighlightIneffective, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
