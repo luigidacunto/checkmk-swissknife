@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.6
+// @version      2.6.0
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
