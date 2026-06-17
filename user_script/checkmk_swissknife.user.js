@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.0
+// @version      2.9.1
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -820,22 +820,24 @@
 
     injectStyles(doc, 'cmk-sk-inv-btn-styles', `
       .cmk-sk-inv-btn {
-        display: inline-block;
-        background: #2c6fad;
-        color: #fff !important;
-        font-size: 9px;
-        font-weight: bold;
-        padding: 1px 5px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        color: #6aabde !important;
+        border: 1px solid #4a8fc4;
         border-radius: 3px;
         text-decoration: none !important;
         margin-left: 5px;
         vertical-align: middle;
-        font-family: monospace;
-        white-space: nowrap;
         cursor: pointer;
-        opacity: 0.85;
+        opacity: 0.75;
+        flex-shrink: 0;
       }
-      .cmk-sk-inv-btn:hover { opacity: 1; background: #1a5a99 !important; }
+      .cmk-sk-inv-btn:hover { opacity: 1; border-color: #88c4f0; color: #88c4f0 !important; }
+      .cmk-sk-inv-btn svg { display: block; }
     `);
 
     hostCells.forEach(td => {
@@ -851,7 +853,7 @@
       btn.target = '_blank';
       btn.rel = 'noopener';
       btn.title = `Service Discovery: ${hostname}`;
-      btn.textContent = 'disco';
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="15.65" y2="15.65"/></svg>';
       td.appendChild(btn);
     });
 
