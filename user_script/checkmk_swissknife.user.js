@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.8.1
+// @version      2.9.0
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
 // @updateURL    https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @downloadURL  https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
-// @include      /^https?:\/\/.+\/check_mk\/(index|wato)\.py/
+// @include      /^https?:\/\/.+\/check_mk\/(index|wato|view)\.py/
 // @grant        none
 // ==/UserScript==
 
@@ -805,12 +805,68 @@
 
 
   // =========================================================================
+  // FEATURE: Inventory Button su view.py
+  //
+  // Nelle pagine view.py (monitoring views), aggiunge un piccolo pulsante
+  // accanto a ogni hostname nella colonna Host per aprire direttamente la
+  // pagina di Service Discovery dell'host in una nuova tab.
+  // =========================================================================
+
+  function addInventoryButtons(doc) {
+    if (doc.body.dataset.cmkInventoryBtns === '1') return;
+
+    const hostCells = doc.querySelectorAll('table.data td.nobr');
+    if (!hostCells.length) return;
+
+    injectStyles(doc, 'cmk-sk-inv-btn-styles', `
+      .cmk-sk-inv-btn {
+        display: inline-block;
+        background: #2c6fad;
+        color: #fff !important;
+        font-size: 9px;
+        font-weight: bold;
+        padding: 1px 5px;
+        border-radius: 3px;
+        text-decoration: none !important;
+        margin-left: 5px;
+        vertical-align: middle;
+        font-family: monospace;
+        white-space: nowrap;
+        cursor: pointer;
+        opacity: 0.85;
+      }
+      .cmk-sk-inv-btn:hover { opacity: 1; background: #1a5a99 !important; }
+    `);
+
+    hostCells.forEach(td => {
+      const link = td.querySelector('a[href*="view_name=hoststatus"]');
+      if (!link) return;
+      const params = new URLSearchParams(link.getAttribute('href').split('?')[1] || '');
+      const hostname = params.get('host');
+      if (!hostname) return;
+
+      const btn = doc.createElement('a');
+      btn.className = 'cmk-sk-inv-btn';
+      btn.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
+      btn.target = '_blank';
+      btn.rel = 'noopener';
+      btn.title = `Service Discovery: ${hostname}`;
+      btn.textContent = 'disco';
+      td.appendChild(btn);
+    });
+
+    doc.body.dataset.cmkInventoryBtns = '1';
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
-  let attemptsFolder   = 0;
-  let attemptsAcc      = 0;
-  let attemptsRuleset  = 0;
+  let attemptsFolder    = 0;
+  let attemptsAcc       = 0;
+  let attemptsRuleset   = 0;
+  let attemptsInventory = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -858,14 +914,25 @@
     addRulesetFilterToggle(doc);
   }
 
+  function tryAddInventoryButtons() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsInventory < MAX_ATTEMPTS) setTimeout(tryAddInventoryButtons, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    addInventoryButtons(doc);
+  }
+
   function init() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     const mode = getPageMode(iDoc);
     const targetDoc = getTargetDoc();
     const targetMode = getPageMode(targetDoc);
-    attemptsFolder  = 0;
-    attemptsAcc     = 0;
-    attemptsRuleset = 0;
+    attemptsFolder    = 0;
+    attemptsAcc       = 0;
+    attemptsRuleset   = 0;
+    attemptsInventory = 0;
     // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: solo sulle pagine in ACCORDION_MODES.
@@ -876,6 +943,8 @@
     if (!targetMode || targetMode === 'edit_ruleset') {
       setTimeout(tryHighlightRuleset, 300);
     }
+    // Inventory button: su view.py, si auto-ferma se non applicabile.
+    setTimeout(tryAddInventoryButtons, 500);
   }
 
   if (document.readyState === 'complete') {
