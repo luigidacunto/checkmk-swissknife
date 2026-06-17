@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.1
+// @version      2.9.2
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -825,18 +825,18 @@
         justify-content: center;
         width: 16px;
         height: 16px;
-        background: transparent;
-        color: #6aabde !important;
-        border: 1px solid #4a8fc4;
+        background: rgba(229,165,0,0.08);
+        color: #e5a500 !important;
+        border: 1px solid #e5a500;
         border-radius: 3px;
         text-decoration: none !important;
-        margin-left: 5px;
+        margin-right: 5px;
         vertical-align: middle;
         cursor: pointer;
-        opacity: 0.75;
+        opacity: 0.8;
         flex-shrink: 0;
       }
-      .cmk-sk-inv-btn:hover { opacity: 1; border-color: #88c4f0; color: #88c4f0 !important; }
+      .cmk-sk-inv-btn:hover { opacity: 1; background: rgba(229,165,0,0.18) !important; }
       .cmk-sk-inv-btn svg { display: block; }
     `);
 
@@ -853,8 +853,8 @@
       btn.target = '_blank';
       btn.rel = 'noopener';
       btn.title = `Service Discovery: ${hostname}`;
-      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="15.65" y2="15.65"/></svg>';
-      td.appendChild(btn);
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
+      td.prepend(btn);
     });
 
     doc.body.dataset.cmkInventoryBtns = '1';
