@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.7.1
+// @version      2.8.0
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -712,6 +712,96 @@
 
 
   // =========================================================================
+  // FEATURE: Ruleset Filter Toggle
+  //
+  // Dopo che le funzioni di highlight hanno marcato le righe rilevanti
+  // (match, no-match, ineffective), aggiunge una barra in cima con un pulsante
+  // per nascondere le righe e i folder senza alcuna rilevanza. Utile su
+  // pagine con centinaia di regole dove quelle rilevanti sono poche.
+  // =========================================================================
+
+  function addRulesetFilterToggle(doc) {
+    if (doc.body.dataset.cmkFilterToggle === '1') return;
+    doc.body.dataset.cmkFilterToggle = '1';
+
+    const RELEVANT_SEL = 'tr.cmk-sk-rule-match, tr.cmk-sk-rule-nomatch, tr.cmk-sk-ineffective';
+
+    doc.querySelectorAll('tr.data').forEach(row => {
+      if (!row.matches(RELEVANT_SEL)) row.classList.add('cmk-sk-irrelevant-row');
+    });
+
+    doc.querySelectorAll('div.foldable_wrapper').forEach(wrapper => {
+      if (!wrapper.querySelector(RELEVANT_SEL)) wrapper.classList.add('cmk-sk-irrelevant-folder');
+    });
+
+    const relevantCount     = doc.querySelectorAll(RELEVANT_SEL).length;
+    const irrelevantRows    = doc.querySelectorAll('tr.cmk-sk-irrelevant-row').length;
+    const irrelevantFolders = doc.querySelectorAll('div.foldable_wrapper.cmk-sk-irrelevant-folder').length;
+
+    if (!irrelevantRows && !irrelevantFolders) return;
+
+    injectStyles(doc, 'cmk-sk-filter-toggle-styles', `
+      #cmk-sk-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 10px;
+        margin: 6px 0 4px 0;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #999;
+        font-family: monospace;
+      }
+      #cmk-sk-filter-toggle-btn {
+        cursor: pointer;
+        padding: 3px 10px;
+        border-radius: 3px;
+        border: 1px solid #555;
+        background: #2a2a2a;
+        color: #bbb;
+        font-size: 11px;
+        font-family: monospace;
+        font-weight: bold;
+        letter-spacing: 0.03em;
+      }
+      #cmk-sk-filter-toggle-btn:hover { background: #383838; }
+      #cmk-sk-filter-toggle-btn.active {
+        background: #1c3320;
+        border-color: #4caf50;
+        color: #4caf50;
+      }
+      body.cmk-sk-filter-active tr.cmk-sk-irrelevant-row { display: none !important; }
+      body.cmk-sk-filter-active div.foldable_wrapper.cmk-sk-irrelevant-folder { display: none !important; }
+    `);
+
+    const bar = doc.createElement('div');
+    bar.id = 'cmk-sk-filter-bar';
+
+    const btn = doc.createElement('button');
+    btn.id = 'cmk-sk-filter-toggle-btn';
+    btn.type = 'button';
+    btn.textContent = 'Solo rilevanti';
+
+    const info = doc.createElement('span');
+    info.textContent = `${relevantCount} rilevanti · ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
+
+    btn.addEventListener('click', () => {
+      const isActive = doc.body.classList.toggle('cmk-sk-filter-active');
+      btn.classList.toggle('active', isActive);
+      btn.textContent = isActive ? 'Mostra tutto' : 'Solo rilevanti';
+    });
+
+    bar.appendChild(btn);
+    bar.appendChild(info);
+
+    const anchor = doc.querySelector('div.foldable_wrapper') || doc.querySelector('div.wato');
+    if (anchor) anchor.before(bar);
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
@@ -762,6 +852,7 @@
     if (getPageMode(doc) !== 'edit_ruleset') return;
     highlightIneffectiveRules(doc);
     highlightRuleMatchStatus(doc);
+    addRulesetFilterToggle(doc);
   }
 
   function init() {
