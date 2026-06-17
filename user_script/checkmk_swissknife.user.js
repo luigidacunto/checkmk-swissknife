@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.8.0
+// @version      2.8.1
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -726,6 +726,10 @@
 
     const RELEVANT_SEL = 'tr.cmk-sk-rule-match, tr.cmk-sk-rule-nomatch, tr.cmk-sk-ineffective';
 
+    // Nessuna riga evidenziata = nessuna ricerca attiva, toggle inutile
+    const relevantCount = doc.querySelectorAll(RELEVANT_SEL).length;
+    if (!relevantCount) return;
+
     doc.querySelectorAll('tr.data').forEach(row => {
       if (!row.matches(RELEVANT_SEL)) row.classList.add('cmk-sk-irrelevant-row');
     });
@@ -734,7 +738,6 @@
       if (!wrapper.querySelector(RELEVANT_SEL)) wrapper.classList.add('cmk-sk-irrelevant-folder');
     });
 
-    const relevantCount     = doc.querySelectorAll(RELEVANT_SEL).length;
     const irrelevantRows    = doc.querySelectorAll('tr.cmk-sk-irrelevant-row').length;
     const irrelevantFolders = doc.querySelectorAll('div.foldable_wrapper.cmk-sk-irrelevant-folder').length;
 
