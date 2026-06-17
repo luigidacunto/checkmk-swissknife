@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.7.0
+// @version      2.7.1
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -638,7 +638,7 @@
   function highlightRuleMatchStatus(doc) {
     if (doc.body.dataset.cmkMatchHighlight === '1') return;
 
-    const matchImgs   = doc.querySelectorAll('img.icon[title^="This rule matches"]');
+    const matchImgs   = doc.querySelectorAll('img.icon[title^="This rule matches"], img.icon[title="Matches"]');
     const noMatchImgs = doc.querySelectorAll('img.icon[title^="This rule does not match"]');
     if (!matchImgs.length && !noMatchImgs.length) return;
 
