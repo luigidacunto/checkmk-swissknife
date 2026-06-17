@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.6
+// @version      2.9.7
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -827,35 +827,39 @@
         vertical-align: middle;
       }
       .cmk-sk-inv-btn, .cmk-sk-copy-btn, .cmk-sk-copy-short-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        border-radius: 3px;
-        cursor: pointer;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 16px !important;
+        height: 16px !important;
+        border-radius: 3px !important;
+        cursor: pointer !important;
         opacity: 0.8;
         flex-shrink: 0;
-        padding: 0;
-        margin: 0;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
         text-decoration: none !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+        vertical-align: middle !important;
       }
-      .cmk-sk-inv-btn, .cmk-sk-inv-btn:visited {
-        background: rgba(229,165,0,0.08);
+      .cmk-sk-inv-btn {
+        background: rgba(229,165,0,0.08) !important;
         color: #e5a500 !important;
-        border: 1px solid #e5a500;
+        border: 1px solid #e5a500 !important;
       }
-      .cmk-sk-inv-btn:hover { opacity: 1; background: rgba(229,165,0,0.18) !important; }
+      .cmk-sk-inv-btn:hover { opacity: 1 !important; background: rgba(229,165,0,0.18) !important; }
       .cmk-sk-copy-btn {
-        background: rgba(90,180,214,0.08);
+        background: rgba(90,180,214,0.08) !important;
         color: #5ab4d6 !important;
-        border: 1px solid #5ab4d6;
+        border: 1px solid #5ab4d6 !important;
       }
       .cmk-sk-copy-btn:hover { opacity: 1; background: rgba(90,180,214,0.18) !important; }
       .cmk-sk-copy-short-btn {
-        background: rgba(160,120,200,0.08);
+        background: rgba(160,120,200,0.08) !important;
         color: #a078c8 !important;
-        border: 1px solid #a078c8;
+        border: 1px solid #a078c8 !important;
       }
       .cmk-sk-copy-short-btn:hover { opacity: 1; background: rgba(160,120,200,0.18) !important; }
       .cmk-sk-copy-btn.copied, .cmk-sk-copy-short-btn.copied {
@@ -880,13 +884,12 @@
       const group = doc.createElement('span');
       group.className = 'cmk-sk-btn-group';
 
-      const btn = doc.createElement('a');
+      const btn = doc.createElement('button');
       btn.className = 'cmk-sk-inv-btn';
-      btn.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
-      btn.target = '_blank';
-      btn.rel = 'noopener';
+      btn.type = 'button';
       btn.title = `Service Discovery: ${hostname}`;
       btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
+      btn.addEventListener('click', () => { window.open(`wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`, '_blank', 'noopener'); });
 
       const copyBtn = doc.createElement('button');
       copyBtn.className = 'cmk-sk-copy-btn';
