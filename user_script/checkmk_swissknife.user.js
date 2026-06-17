@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.3
+// @version      2.9.4
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -830,7 +830,7 @@
         border: 1px solid #e5a500;
         border-radius: 3px;
         text-decoration: none !important;
-        margin-right: 5px;
+        margin-right: 2px;
         vertical-align: middle;
         cursor: pointer;
         opacity: 0.8;
@@ -843,19 +843,19 @@
         justify-content: center;
         width: 16px;
         height: 16px;
-        background: transparent;
-        color: #999 !important;
-        border: 1px solid #666;
+        background: rgba(90,180,214,0.08);
+        color: #5ab4d6 !important;
+        border: 1px solid #5ab4d6;
         border-radius: 3px;
         margin-right: 5px;
         vertical-align: middle;
         cursor: pointer;
-        opacity: 0.7;
+        opacity: 0.8;
         flex-shrink: 0;
         padding: 0;
       }
-      .cmk-sk-copy-btn:hover { opacity: 1; border-color: #aaa; color: #ccc !important; }
-      .cmk-sk-copy-btn.copied { border-color: #4caf50 !important; color: #4caf50 !important; opacity: 1; }
+      .cmk-sk-copy-btn:hover { opacity: 1; background: rgba(90,180,214,0.18) !important; }
+      .cmk-sk-copy-btn.copied { border-color: #4caf50 !important; color: #4caf50 !important; background: rgba(76,175,80,0.12) !important; opacity: 1; }
       .cmk-sk-inv-btn svg, .cmk-sk-copy-btn svg { display: block; }
     `);
 
