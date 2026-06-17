@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.2
+// @version      2.9.3
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -837,7 +837,26 @@
         flex-shrink: 0;
       }
       .cmk-sk-inv-btn:hover { opacity: 1; background: rgba(229,165,0,0.18) !important; }
-      .cmk-sk-inv-btn svg { display: block; }
+      .cmk-sk-copy-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        color: #999 !important;
+        border: 1px solid #666;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+        cursor: pointer;
+        opacity: 0.7;
+        flex-shrink: 0;
+        padding: 0;
+      }
+      .cmk-sk-copy-btn:hover { opacity: 1; border-color: #aaa; color: #ccc !important; }
+      .cmk-sk-copy-btn.copied { border-color: #4caf50 !important; color: #4caf50 !important; opacity: 1; }
+      .cmk-sk-inv-btn svg, .cmk-sk-copy-btn svg { display: block; }
     `);
 
     hostCells.forEach(td => {
@@ -854,6 +873,20 @@
       btn.rel = 'noopener';
       btn.title = `Service Discovery: ${hostname}`;
       btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
+
+      const copyBtn = doc.createElement('button');
+      copyBtn.className = 'cmk-sk-copy-btn';
+      copyBtn.type = 'button';
+      copyBtn.title = `Copia hostname: ${hostname}`;
+      copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(hostname).then(() => {
+          copyBtn.classList.add('copied');
+          setTimeout(() => copyBtn.classList.remove('copied'), 900);
+        });
+      });
+
+      td.prepend(copyBtn);
       td.prepend(btn);
     });
 
