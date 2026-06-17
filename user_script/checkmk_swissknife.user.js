@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.8
+// @version      2.9.9
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -874,10 +874,11 @@
     const CLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
     hostCells.forEach(td => {
-      const link = td.querySelector('a[href*="view_name=hoststatus"]');
-      if (!link) return;
-      const params = new URLSearchParams(link.getAttribute('href').split('?')[1] || '');
-      const hostname = params.get('host');
+      let hostname = null;
+      for (const a of td.querySelectorAll('a[href*="host="]')) {
+        const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
+        if (h) { hostname = h; break; }
+      }
       if (!hostname) return;
       const shortname = hostname.split('.')[0];
 
