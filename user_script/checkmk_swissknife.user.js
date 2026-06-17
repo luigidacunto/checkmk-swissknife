@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.4
+// @version      2.9.5
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -819,45 +819,54 @@
     if (!hostCells.length) return;
 
     injectStyles(doc, 'cmk-sk-inv-btn-styles', `
-      .cmk-sk-inv-btn {
+      .cmk-sk-btn-group {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        width: 16px;
-        height: 16px;
-        background: rgba(229,165,0,0.08);
-        color: #e5a500 !important;
-        border: 1px solid #e5a500;
-        border-radius: 3px;
-        text-decoration: none !important;
-        margin-right: 2px;
+        gap: 2px;
+        margin-right: 4px;
         vertical-align: middle;
-        cursor: pointer;
-        opacity: 0.8;
-        flex-shrink: 0;
       }
-      .cmk-sk-inv-btn:hover { opacity: 1; background: rgba(229,165,0,0.18) !important; }
-      .cmk-sk-copy-btn {
+      .cmk-sk-inv-btn, .cmk-sk-copy-btn, .cmk-sk-copy-short-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         width: 16px;
         height: 16px;
-        background: rgba(90,180,214,0.08);
-        color: #5ab4d6 !important;
-        border: 1px solid #5ab4d6;
         border-radius: 3px;
-        margin-right: 5px;
-        vertical-align: middle;
         cursor: pointer;
         opacity: 0.8;
         flex-shrink: 0;
         padding: 0;
+        text-decoration: none !important;
+      }
+      .cmk-sk-inv-btn, .cmk-sk-inv-btn:visited {
+        background: rgba(229,165,0,0.08);
+        color: #e5a500 !important;
+        border: 1px solid #e5a500;
+      }
+      .cmk-sk-inv-btn:hover { opacity: 1; background: rgba(229,165,0,0.18) !important; }
+      .cmk-sk-copy-btn {
+        background: rgba(90,180,214,0.08);
+        color: #5ab4d6 !important;
+        border: 1px solid #5ab4d6;
       }
       .cmk-sk-copy-btn:hover { opacity: 1; background: rgba(90,180,214,0.18) !important; }
-      .cmk-sk-copy-btn.copied { border-color: #4caf50 !important; color: #4caf50 !important; background: rgba(76,175,80,0.12) !important; opacity: 1; }
-      .cmk-sk-inv-btn svg, .cmk-sk-copy-btn svg { display: block; }
+      .cmk-sk-copy-short-btn {
+        background: rgba(160,120,200,0.08);
+        color: #a078c8 !important;
+        border: 1px solid #a078c8;
+      }
+      .cmk-sk-copy-short-btn:hover { opacity: 1; background: rgba(160,120,200,0.18) !important; }
+      .cmk-sk-copy-btn.copied, .cmk-sk-copy-short-btn.copied {
+        border-color: #4caf50 !important;
+        color: #4caf50 !important;
+        background: rgba(76,175,80,0.12) !important;
+        opacity: 1;
+      }
+      .cmk-sk-btn-group svg { display: block; }
     `);
+
+    const CLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
     hostCells.forEach(td => {
       const link = td.querySelector('a[href*="view_name=hoststatus"]');
@@ -865,6 +874,10 @@
       const params = new URLSearchParams(link.getAttribute('href').split('?')[1] || '');
       const hostname = params.get('host');
       if (!hostname) return;
+      const shortname = hostname.split('.')[0];
+
+      const group = doc.createElement('span');
+      group.className = 'cmk-sk-btn-group';
 
       const btn = doc.createElement('a');
       btn.className = 'cmk-sk-inv-btn';
@@ -878,7 +891,7 @@
       copyBtn.className = 'cmk-sk-copy-btn';
       copyBtn.type = 'button';
       copyBtn.title = `Copia hostname: ${hostname}`;
-      copyBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      copyBtn.innerHTML = CLIP_SVG;
       copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(hostname).then(() => {
           copyBtn.classList.add('copied');
@@ -886,8 +899,22 @@
         });
       });
 
-      td.prepend(copyBtn);
-      td.prepend(btn);
+      const copyShortBtn = doc.createElement('button');
+      copyShortBtn.className = 'cmk-sk-copy-short-btn';
+      copyShortBtn.type = 'button';
+      copyShortBtn.title = `Copia hostname corto: ${shortname}`;
+      copyShortBtn.innerHTML = CLIP_SVG;
+      copyShortBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(shortname).then(() => {
+          copyShortBtn.classList.add('copied');
+          setTimeout(() => copyShortBtn.classList.remove('copied'), 900);
+        });
+      });
+
+      group.appendChild(btn);
+      group.appendChild(copyBtn);
+      group.appendChild(copyShortBtn);
+      td.prepend(group);
     });
 
     doc.body.dataset.cmkInventoryBtns = '1';
