@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.9.9
+// @version      2.10.0
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -844,7 +844,7 @@
         line-height: 0 !important;
         vertical-align: middle !important;
       }
-      .cmk-sk-inv-btn {
+      .cmk-sk-inv-btn, .cmk-sk-inv-btn:visited {
         background: rgba(229,165,0,0.08) !important;
         color: #e5a500 !important;
         border: 1px solid #e5a500 !important;
@@ -885,12 +885,13 @@
       const group = doc.createElement('span');
       group.className = 'cmk-sk-btn-group';
 
-      const btn = doc.createElement('button');
+      const btn = doc.createElement('a');
       btn.className = 'cmk-sk-inv-btn';
-      btn.type = 'button';
+      btn.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
+      btn.target = '_blank';
+      btn.rel = 'noopener';
       btn.title = `Service Discovery: ${hostname}`;
       btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
-      btn.addEventListener('click', () => { window.open(`wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`, '_blank', 'noopener'); });
 
       const copyBtn = doc.createElement('button');
       copyBtn.className = 'cmk-sk-copy-btn';
