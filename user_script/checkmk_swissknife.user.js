@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.12.4
+// @version      2.13.0
 // @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
@@ -1022,6 +1022,95 @@
 
 
   // =========================================================================
+  // FEATURE: "Configura in WATO" menu su view.py
+  //
+  // Aggiunge una <select> paginata nel menu bar (Commands/Hosts/Export/...) delle
+  // viste di monitoraggio live. Ogni opzione apre WATO con un gruppo di max 50
+  // host, pre-filtrati per hostname esatto via regex ~^(h1|h2|...)$.
+  // =========================================================================
+
+  const WATO_PAGE_SIZE = 50;
+
+  // Vero se l'utente corrente ha accesso a WATO (ruolo admin/configurazione).
+  // Con sidebar: il documento esterno ha link wato.py nella navigazione Setup.
+  // Senza sidebar: il shortcut "pending changes" appare solo per WATO admin.
+  function hasWatoAccess(doc) {
+    if (document !== doc && document.querySelector('a[href*="wato.py"]')) return true;
+    if (doc.querySelector('a[href*="wato.py"][href*="mode=changelog"]')) return true;
+    return false;
+  }
+
+  function addViewWatoMenu(doc) {
+    if (doc.body.dataset.cmkViewWatoMenu === '1') return;
+    doc.body.dataset.cmkViewWatoMenu = '1';
+    if (!hasWatoAccess(doc)) return;
+
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return;
+
+    const hosts = [...new Set(
+      [...doc.querySelectorAll('tr.data td.nobr a[href*="host="]')]
+        .map(a => { const m = a.href.match(/[?&]host=([^&]+)/); return m ? decodeURIComponent(m[1]) : null; })
+        .filter(Boolean)
+    )];
+    if (!hosts.length) return;
+
+    const folder = new URLSearchParams(doc.location.search).get('wato_folder') || '';
+    const base = doc.location.pathname.replace(/[^/]*$/, '');
+    const pages = Math.ceil(hosts.length / WATO_PAGE_SIZE);
+
+    const wrapper = doc.createElement('div');
+    wrapper.className = 'cmk-sk-wato-menu';
+    wrapper.style.cssText = 'display:inline-flex;align-items:center;padding:0 8px;border-left:1px solid rgba(255,255,255,0.15);';
+
+    const sel = doc.createElement('select');
+    sel.style.cssText = 'background:#3b3b3b;color:#ccc;border:1px solid #555;border-radius:3px;padding:2px 5px;font-size:12px;cursor:pointer;vertical-align:middle;';
+
+    const placeholder = doc.createElement('option');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = 'WATO (' + hosts.length + ')';
+    sel.appendChild(placeholder);
+
+    for (let i = 0; i < pages; i++) {
+      const start = i * WATO_PAGE_SIZE;
+      const end = Math.min(start + WATO_PAGE_SIZE, hosts.length);
+      const opt = doc.createElement('option');
+      opt.value = i;
+      opt.textContent = 'Host ' + (start + 1) + '-' + end;
+      sel.appendChild(opt);
+    }
+
+    const btn = doc.createElement('button');
+    btn.textContent = 'Apri';
+    btn.style.cssText = 'margin-left:4px;background:#555;color:#ccc;border:1px solid #777;border-radius:3px;padding:2px 7px;font-size:12px;cursor:pointer;vertical-align:middle;';
+    btn.addEventListener('mouseover', () => { btn.style.background = '#6a6a6a'; });
+    btn.addEventListener('mouseout', () => { btn.style.background = '#555'; });
+
+    btn.addEventListener('click', function () {
+      const page = parseInt(sel.value);
+      if (isNaN(page)) return;
+      const slice = hosts.slice(page * WATO_PAGE_SIZE, (page + 1) * WATO_PAGE_SIZE);
+      const regex = '~^(' + slice.join('|') + ')$';
+      const url = location.origin + base + 'wato.py?mode=folder'
+        + (folder ? '&folder=' + encodeURIComponent(folder) : '')
+        + '&host_search=1'
+        + '&host_search_host=' + encodeURIComponent(regex)
+        + '&filled_in=edit_host';
+      window.open(url, '_blank');
+      sel.value = '';
+    });
+
+    wrapper.appendChild(sel);
+    wrapper.appendChild(btn);
+    menues.appendChild(wrapper);
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
@@ -1030,6 +1119,7 @@
   let attemptsRuleset   = 0;
   let attemptsInventory = 0;
   let attemptsFolderMon = 0;
+  let attemptsViewWato  = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1093,6 +1183,21 @@
     addInventoryButtons(doc);
   }
 
+  function tryAddViewWatoMenu() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsViewWato < MAX_ATTEMPTS) setTimeout(tryAddViewWatoMenu, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    // Aspetta che la tabella dati sia presente
+    if (!doc.querySelector('tr.data td.nobr a[href*="host="]')) {
+      if (++attemptsViewWato < MAX_ATTEMPTS) setTimeout(tryAddViewWatoMenu, POLL_INTERVAL_MS);
+      return;
+    }
+    addViewWatoMenu(doc);
+  }
+
   function tryAddWatoFolderMonitorButtons() {
     const doc = getTargetDoc();
     if (!doc || !doc.body) {
@@ -1114,6 +1219,7 @@
     attemptsRuleset   = 0;
     attemptsInventory = 0;
     attemptsFolderMon = 0;
+    attemptsViewWato  = 0;
     // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: solo sulle pagine in ACCORDION_MODES.
@@ -1128,6 +1234,8 @@
     setTimeout(tryAddInventoryButtons, 500);
     // Monitor button: su wato.py mode=folder, si auto-ferma se non applicabile.
     setTimeout(tryAddWatoFolderMonitorButtons, 500);
+    // WATO menu: su view.py con host rows, si auto-ferma se non applicabile.
+    setTimeout(tryAddViewWatoMenu, 800);
   }
 
   if (document.readyState === 'complete') {
@@ -1166,6 +1274,15 @@
     if (mode === 'folder' && iDoc.body && !iDoc.body.dataset.cmkFolderMonBtns) {
       attemptsFolderMon = 0;
       setTimeout(tryAddWatoFolderMonitorButtons, 300);
+    }
+    const tDoc = getTargetDoc();
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkViewWatoMenu) {
+      try {
+        if (/\/view\.py/.test(tDoc.location.pathname) && tDoc.querySelector('tr.data td.nobr a[href*="host="]')) {
+          attemptsViewWato = 0;
+          setTimeout(tryAddViewWatoMenu, 300);
+        }
+      } catch (e) {}
     }
   }).observe(document.body, { childList: true, subtree: true });
 
