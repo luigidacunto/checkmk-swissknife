@@ -1,7 +1,7 @@
-﻿// ==UserScript==
+// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.12.0
+// @version      2.12.1
 // @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
@@ -24,8 +24,8 @@
   const MAX_ATTEMPTS     = 60;
 
   // Ricava il documento su cui operare:
-  // - Se c'Ã¨ un iframe (index.py con sidebar) â†’ usa il contentDocument dell'iframe
-  // - Se wato.py Ã¨ aperto direttamente â†’ usa document solo se contiene la select target
+  // - Se c'è un iframe (index.py con sidebar) → usa il contentDocument dell'iframe
+  // - Se wato.py è aperto direttamente → usa document solo se contiene la select target
   function getWatoDoc(selectId) {
     const iframe = document.querySelector('iframe[name="main"], iframe#main');
     if (iframe) {
@@ -69,8 +69,8 @@
   // FEATURE: Folder Path Select Enhancement
   //
   // Migliora la <select> del folder path in WATO mostrando il path completo
-  // in stile "Radice â€º Livello â€º Foglia" e abilitando la ricerca su di esso.
-  // Si attiva solo quando la select #explicit_conditions_p_folder_path Ã¨ presente.
+  // in stile "Radice › Livello › Foglia" e abilitando la ricerca su di esso.
+  // Si attiva solo quando la select #explicit_conditions_p_folder_path è presente.
   // =========================================================================
 
   const FOLDER_SELECT_ID = 'explicit_conditions_p_folder_path';
@@ -83,7 +83,7 @@
       i === parts.length - 1
         ? p.toUpperCase()
         : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
-    ).join(' â€º ');
+    ).join(' › ');
   }
 
   function enhanceFolderSelect(iDoc) {
@@ -459,7 +459,7 @@
     const badge = td.querySelector('.cmk-sk-inh-count');
     if (!badge) return;
     if (count > 0) {
-      badge.textContent = `â†‘${count}`;
+      badge.textContent = `↑${count}`;
       badge.style.display = 'inline';
     } else {
       badge.style.display = 'none';
@@ -477,7 +477,7 @@
     const badge = td.querySelector('.cmk-sk-diff-count');
     if (!badge) return;
     if (count > 0) {
-      badge.textContent = `â‰ ${count}`;
+      badge.textContent = `≠${count}`;
       badge.style.display = 'inline';
     } else {
       badge.style.display = 'none';
@@ -619,7 +619,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-ineff-badge';
       badge.title = 'Ineffective rule';
-      badge.textContent = 'âš  ineffective';
+      badge.textContent = '⚠ ineffective';
       img.replaceWith(badge);
     });
 
@@ -693,7 +693,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-match-badge';
       badge.title = img.title;
-      badge.textContent = 'âœ“ match';
+      badge.textContent = '✓ match';
       img.replaceWith(badge);
     });
 
@@ -704,7 +704,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-nomatch-badge';
       badge.title = img.title;
-      badge.textContent = 'âœ— no match';
+      badge.textContent = '✗ no match';
       img.replaceWith(badge);
     });
 
@@ -789,7 +789,7 @@
     btn.textContent = 'Solo rilevanti';
 
     const info = doc.createElement('span');
-    info.textContent = `${relevantCount} rilevanti Â· ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
+    info.textContent = `${relevantCount} rilevanti · ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
 
     btn.addEventListener('click', () => {
       const isActive = doc.body.classList.toggle('cmk-sk-filter-active');
@@ -972,7 +972,7 @@
 
     let active = 0, disabled = 0;
     doc.querySelectorAll('table.data td').forEach(td => {
-      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo Ã¨ l'hostname
+      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo è l'hostname
       const links = td.querySelectorAll('a[href*="mode=edit_host"]');
       if (links.length !== 1) return;
       const link = links[0];
@@ -996,16 +996,28 @@
       btn.title = `Monitoring: ${hostname}`;
       btn.innerHTML = EYE_SVG;
       td.insertBefore(btn, link);
-      td.insertBefore(doc.createTextNode('Â '), link);
+      td.insertBefore(doc.createTextNode(' '), link);
       active++;
     });
 
-    if (added > 0) doc.body.dataset.cmkFolderMonBtns = '1';
+    const h3 = doc.querySelector('h3.table');
+    if (h3 && !h3.querySelector('.cmk-sk-folder-summary')) {
+      const summary = doc.createElement('span');
+      summary.className = 'cmk-sk-folder-summary';
+      summary.style.cssText = 'float:right;font-size:12px;font-weight:normal;opacity:0.75;letter-spacing:0.02em;';
+      summary.innerHTML =
+        '<span style="color:#4caf50">&#9679; ' + active + ' monitorati</span>' +
+        '<span style="margin:0 6px;opacity:0.4;">|</span>' +
+        '<span style="color:#e05050">&#9679; ' + disabled + ' disabilitati</span>';
+      h3.appendChild(summary);
+    }
+
+    if (active > 0 || disabled > 0) doc.body.dataset.cmkFolderMonBtns = '1';
   }
 
 
   // =========================================================================
-  // BOOTSTRAP: polling per ogni feature, attivato solo se la select Ã¨ presente
+  // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
   let attemptsFolder    = 0;
@@ -1023,7 +1035,7 @@
 
     const sel = iDoc.getElementById(FOLDER_SELECT_ID);
     if (!sel) {
-      // La select non Ã¨ presente in questa pagina: feature non applicabile, si ferma.
+      // La select non è presente in questa pagina: feature non applicabile, si ferma.
       return;
     }
 
@@ -1148,4 +1160,3 @@
   }
 
 })();
-
