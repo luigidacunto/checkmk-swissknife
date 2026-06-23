@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
 // @version      2.11.0
@@ -24,8 +24,8 @@
   const MAX_ATTEMPTS     = 60;
 
   // Ricava il documento su cui operare:
-  // - Se c'è un iframe (index.py con sidebar) → usa il contentDocument dell'iframe
-  // - Se wato.py è aperto direttamente → usa document solo se contiene la select target
+  // - Se c'Ã¨ un iframe (index.py con sidebar) â†’ usa il contentDocument dell'iframe
+  // - Se wato.py Ã¨ aperto direttamente â†’ usa document solo se contiene la select target
   function getWatoDoc(selectId) {
     const iframe = document.querySelector('iframe[name="main"], iframe#main');
     if (iframe) {
@@ -69,8 +69,8 @@
   // FEATURE: Folder Path Select Enhancement
   //
   // Migliora la <select> del folder path in WATO mostrando il path completo
-  // in stile "Radice › Livello › Foglia" e abilitando la ricerca su di esso.
-  // Si attiva solo quando la select #explicit_conditions_p_folder_path è presente.
+  // in stile "Radice â€º Livello â€º Foglia" e abilitando la ricerca su di esso.
+  // Si attiva solo quando la select #explicit_conditions_p_folder_path Ã¨ presente.
   // =========================================================================
 
   const FOLDER_SELECT_ID = 'explicit_conditions_p_folder_path';
@@ -83,7 +83,7 @@
       i === parts.length - 1
         ? p.toUpperCase()
         : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
-    ).join(' › ');
+    ).join(' â€º ');
   }
 
   function enhanceFolderSelect(iDoc) {
@@ -459,7 +459,7 @@
     const badge = td.querySelector('.cmk-sk-inh-count');
     if (!badge) return;
     if (count > 0) {
-      badge.textContent = `↑${count}`;
+      badge.textContent = `â†‘${count}`;
       badge.style.display = 'inline';
     } else {
       badge.style.display = 'none';
@@ -477,7 +477,7 @@
     const badge = td.querySelector('.cmk-sk-diff-count');
     if (!badge) return;
     if (count > 0) {
-      badge.textContent = `≠${count}`;
+      badge.textContent = `â‰ ${count}`;
       badge.style.display = 'inline';
     } else {
       badge.style.display = 'none';
@@ -619,7 +619,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-ineff-badge';
       badge.title = 'Ineffective rule';
-      badge.textContent = '⚠ ineffective';
+      badge.textContent = 'âš  ineffective';
       img.replaceWith(badge);
     });
 
@@ -693,7 +693,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-match-badge';
       badge.title = img.title;
-      badge.textContent = '✓ match';
+      badge.textContent = 'âœ“ match';
       img.replaceWith(badge);
     });
 
@@ -704,7 +704,7 @@
       const badge = doc.createElement('span');
       badge.className = 'cmk-sk-nomatch-badge';
       badge.title = img.title;
-      badge.textContent = '✗ no match';
+      badge.textContent = 'âœ— no match';
       img.replaceWith(badge);
     });
 
@@ -789,7 +789,7 @@
     btn.textContent = 'Solo rilevanti';
 
     const info = doc.createElement('span');
-    info.textContent = `${relevantCount} rilevanti · ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
+    info.textContent = `${relevantCount} rilevanti Â· ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
 
     btn.addEventListener('click', () => {
       const isActive = doc.body.classList.toggle('cmk-sk-filter-active');
@@ -970,9 +970,9 @@
 
     const EYE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 
-    let added = 0;
+    let active = 0, disabled = 0;
     doc.querySelectorAll('table.data td').forEach(td => {
-      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo è l'hostname
+      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo Ã¨ l'hostname
       const links = td.querySelectorAll('a[href*="mode=edit_host"]');
       if (links.length !== 1) return;
       const link = links[0];
@@ -980,7 +980,7 @@
       if (!hostname || link.textContent.trim() !== hostname) return;
 
       // Salta host disabilitati (hanno img con title="This host is disabled" nella stessa cella)
-      if (td.querySelector('img[title="This host is disabled"]')) return;
+      if (td.querySelector('img[title="This host is disabled"]')) { disabled++; return; }
 
       // Evita doppio inserimento
       if (td.querySelector('.cmk-sk-mon-btn')) return;
@@ -996,8 +996,8 @@
       btn.title = `Monitoring: ${hostname}`;
       btn.innerHTML = EYE_SVG;
       td.insertBefore(btn, link);
-      td.insertBefore(doc.createTextNode(' '), link);
-      added++;
+      td.insertBefore(doc.createTextNode('Â '), link);
+      active++;
     });
 
     if (added > 0) doc.body.dataset.cmkFolderMonBtns = '1';
@@ -1005,7 +1005,7 @@
 
 
   // =========================================================================
-  // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
+  // BOOTSTRAP: polling per ogni feature, attivato solo se la select Ã¨ presente
   // =========================================================================
 
   let attemptsFolder    = 0;
@@ -1023,7 +1023,7 @@
 
     const sel = iDoc.getElementById(FOLDER_SELECT_ID);
     if (!sel) {
-      // La select non è presente in questa pagina: feature non applicabile, si ferma.
+      // La select non Ã¨ presente in questa pagina: feature non applicabile, si ferma.
       return;
     }
 
@@ -1148,3 +1148,4 @@
   }
 
 })();
+
