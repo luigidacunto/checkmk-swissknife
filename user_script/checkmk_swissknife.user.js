@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.12.2
+// @version      2.12.3
 // @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
@@ -32,7 +32,8 @@
       try { return iframe.contentDocument; } catch (e) { return null; }
     }
     if (document.getElementById(selectId) ||
-        document.querySelector('select[name*="folder_path"]')) {
+        document.querySelector('select[name*="folder_path"]') ||
+        document.getElementById('wato_folder')) {
       return document;
     }
     return null;
@@ -185,8 +186,8 @@
     buildCustomSearchOverlay(iDoc, sel);
   }
 
-  function buildCustomSearchOverlay(iDoc, sel) {
-    const divContainer = iDoc.getElementById(FOLDER_DIV_ID);
+  function buildCustomSearchOverlay(iDoc, sel, containerEl) {
+    const divContainer = containerEl || iDoc.getElementById(FOLDER_DIV_ID);
     if (!divContainer) return;
     if (divContainer.querySelector('.cmk-sk-folder-overlay')) return;
 
@@ -401,6 +402,7 @@
     divContainer.appendChild(wrapper);
     divContainer.appendChild(badge);
 
+    sel.dataset.cmkEnhanced = '1';
     injectFolderStyles(iDoc);
   }
 
@@ -1033,18 +1035,24 @@
       return;
     }
 
-    const sel = iDoc.getElementById(FOLDER_SELECT_ID);
-    if (!sel) {
-      // La select non è presente in questa pagina: feature non applicabile, si ferma.
-      return;
-    }
+    const sel   = iDoc.getElementById(FOLDER_SELECT_ID);
+    const selVF = iDoc.getElementById('wato_folder');
+    if (!sel && !selVF) return;
 
-    if (!sel.classList.contains('select2-hidden-accessible')) {
-      if (++attemptsFolder < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
-      return;
+    if (sel && !sel.dataset.cmkEnhanced) {
+      if (!sel.classList.contains('select2-hidden-accessible')) {
+        if (++attemptsFolder < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
+        return;
+      }
+      buildCustomSearchOverlay(iDoc, sel);
     }
-
-    buildCustomSearchOverlay(iDoc, sel);
+    if (selVF && !selVF.dataset.cmkEnhanced) {
+      if (!selVF.classList.contains('select2-hidden-accessible')) {
+        if (++attemptsFolder < MAX_ATTEMPTS) setTimeout(tryEnhanceFolderSelect, POLL_INTERVAL_MS);
+        return;
+      }
+      buildCustomSearchOverlay(iDoc, selVF, selVF.closest('.floatfilter') || selVF.parentElement);
+    }
   }
 
   function tryInitAccordionCounts() {
@@ -1132,6 +1140,11 @@
     const mode = getPageMode(iDoc);
     const sel = iDoc.getElementById(FOLDER_SELECT_ID);
     if (sel && sel.classList.contains('select2-hidden-accessible') && !sel.dataset.cmkEnhanced) {
+      attemptsFolder = 0;
+      setTimeout(tryEnhanceFolderSelect, 300);
+    }
+    const selVF = iDoc.getElementById('wato_folder');
+    if (selVF && selVF.classList.contains('select2-hidden-accessible') && !selVF.dataset.cmkEnhanced) {
       attemptsFolder = 0;
       setTimeout(tryEnhanceFolderSelect, 300);
     }
