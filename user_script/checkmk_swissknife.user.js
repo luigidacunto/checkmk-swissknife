@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.10.0
+// @version      2.11.0
+// @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
@@ -928,6 +929,82 @@
 
 
   // =========================================================================
+  // FEATURE: Monitor Button su wato.py (mode=folder)
+  //
+  // Nelle pagine WATO folder, aggiunge un piccolo pulsante accanto all'hostname
+  // di ogni host attivo (non disabilitato) per aprire la vista di monitoraggio
+  // in una nuova tab. Il pulsante occupa lo spazio dove appare l'icona X per
+  // gli host disabilitati, mantenendo l'allineamento delle colonne.
+  // =========================================================================
+
+  function addWatoFolderMonitorButtons(doc) {
+    if (doc.body.dataset.cmkFolderMonBtns === '1') return;
+
+    const base = doc.location.pathname.replace(/[^/]*$/, '');
+
+    injectStyles(doc, 'cmk-sk-folder-mon-btn-styles', `
+      .cmk-sk-mon-btn, .cmk-sk-mon-btn:visited {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 3px !important;
+        cursor: pointer !important;
+        opacity: 0.85;
+        flex-shrink: 0;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        text-decoration: none !important;
+        font-size: 0 !important;
+        line-height: 0 !important;
+        vertical-align: middle !important;
+        background: rgba(76,175,80,0.1) !important;
+        color: #4caf50 !important;
+        border: 1px solid #4caf50 !important;
+      }
+      .cmk-sk-mon-btn:hover { opacity: 1 !important; background: rgba(76,175,80,0.22) !important; }
+      .cmk-sk-mon-btn svg { display: block; }
+    `);
+
+    const EYE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+    let added = 0;
+    doc.querySelectorAll('table.data td').forEach(td => {
+      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo è l'hostname
+      const links = td.querySelectorAll('a[href*="mode=edit_host"]');
+      if (links.length !== 1) return;
+      const link = links[0];
+      const hostname = new URLSearchParams((link.getAttribute('href') || '').split('?')[1] || '').get('host');
+      if (!hostname || link.textContent.trim() !== hostname) return;
+
+      // Salta host disabilitati (hanno img con title="This host is disabled" nella stessa cella)
+      if (td.querySelector('img[title="This host is disabled"]')) return;
+
+      // Evita doppio inserimento
+      if (td.querySelector('.cmk-sk-mon-btn')) return;
+
+      const viewUrl = base + 'view.py?host=' + encodeURIComponent(hostname) + '&view_name=host';
+      const href = base + 'index.py?start_url=' + encodeURIComponent(viewUrl);
+
+      const btn = doc.createElement('a');
+      btn.className = 'cmk-sk-mon-btn';
+      btn.href = href;
+      btn.target = '_blank';
+      btn.rel = 'noopener';
+      btn.title = `Monitoring: ${hostname}`;
+      btn.innerHTML = EYE_SVG;
+      td.insertBefore(btn, link);
+      td.insertBefore(doc.createTextNode(' '), link);
+      added++;
+    });
+
+    if (added > 0) doc.body.dataset.cmkFolderMonBtns = '1';
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
   // =========================================================================
 
@@ -935,6 +1012,7 @@
   let attemptsAcc       = 0;
   let attemptsRuleset   = 0;
   let attemptsInventory = 0;
+  let attemptsFolderMon = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -992,6 +1070,17 @@
     addInventoryButtons(doc);
   }
 
+  function tryAddWatoFolderMonitorButtons() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsFolderMon < MAX_ATTEMPTS) setTimeout(tryAddWatoFolderMonitorButtons, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/wato\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (getPageMode(doc) !== 'folder') return;
+    addWatoFolderMonitorButtons(doc);
+  }
+
   function init() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     const mode = getPageMode(iDoc);
@@ -1001,6 +1090,7 @@
     attemptsAcc       = 0;
     attemptsRuleset   = 0;
     attemptsInventory = 0;
+    attemptsFolderMon = 0;
     // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: solo sulle pagine in ACCORDION_MODES.
@@ -1013,6 +1103,8 @@
     }
     // Inventory button: su view.py, si auto-ferma se non applicabile.
     setTimeout(tryAddInventoryButtons, 500);
+    // Monitor button: su wato.py mode=folder, si auto-ferma se non applicabile.
+    setTimeout(tryAddWatoFolderMonitorButtons, 500);
   }
 
   if (document.readyState === 'complete') {
@@ -1042,6 +1134,10 @@
         (!iDoc.body.dataset.cmkIneffHighlight || !iDoc.body.dataset.cmkMatchHighlight)) {
       attemptsRuleset = 0;
       setTimeout(tryHighlightRuleset, 300);
+    }
+    if (mode === 'folder' && iDoc.body && !iDoc.body.dataset.cmkFolderMonBtns) {
+      attemptsFolderMon = 0;
+      setTimeout(tryAddWatoFolderMonitorButtons, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
