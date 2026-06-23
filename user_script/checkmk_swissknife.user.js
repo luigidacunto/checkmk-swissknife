@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.12.1
+// @version      2.12.2
 // @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
@@ -53,7 +53,7 @@
   }
 
   // Pagine che supportano gli accordion badge (stessa struttura form_edit_host + table.nform)
-  const ACCORDION_MODES = new Set(['edit_host', 'bulkedit']);
+  const ACCORDION_MODES = new Set(['edit_host', 'bulkedit', 'editfolder']);
 
   // Inietta CSS nel documento target (una sola volta, deduplica per id)
   function injectStyles(iDoc, id, css) {
