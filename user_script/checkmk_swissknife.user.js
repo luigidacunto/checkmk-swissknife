@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.12.3
+// @version      2.12.4
 // @checkmk      2.3.x
 // @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
 // @author       Luigi D'Acunto
@@ -273,10 +273,13 @@
     function renderDropdown(filter) {
       dropdown.innerHTML = '';
       const term = filter.trim().toLowerCase();
+      // Normalizza separatori: >, ›, / sono equivalenti nella ricerca
+      const normTerm = term.replace(/\s*[>/›]\s*/g, '/');
       const filtered = term
         ? options.filter(o =>
             o.label.toLowerCase().includes(term) ||
-            o.value.toLowerCase().includes(term) ||
+            o.label.toLowerCase().replace(/\s*›\s*/g, '/').includes(normTerm) ||
+            o.value.toLowerCase().includes(normTerm) ||
             o.original.toLowerCase().includes(term)
           )
         : options;
