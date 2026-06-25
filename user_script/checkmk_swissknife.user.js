@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.13.0
+// @version      2.13.1
 // @checkmk      2.3.x
-// @description  Raccolta di miglioramenti all'interfaccia di Checkmk WATO. Ogni fix o enhancement viene aggiunto qui come feature indipendente.
+// @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
 // @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
 // @updateURL    https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
@@ -16,16 +16,16 @@
   'use strict';
 
   // =========================================================================
-  // INFRASTRUTTURA COMUNE
+  // COMMON INFRASTRUCTURE
   // =========================================================================
 
   const LOG_PREFIX = '[CMK-SK]';
   const POLL_INTERVAL_MS = 500;
   const MAX_ATTEMPTS     = 60;
 
-  // Ricava il documento su cui operare:
-  // - Se c'è un iframe (index.py con sidebar) → usa il contentDocument dell'iframe
-  // - Se wato.py è aperto direttamente → usa document solo se contiene la select target
+  // Returns the document to operate on:
+  // - If there is an iframe (index.py with sidebar) → use iframe's contentDocument
+  // - If wato.py is opened directly → use document only if it contains the target select
   function getWatoDoc(selectId) {
     const iframe = document.querySelector('iframe[name="main"], iframe#main');
     if (iframe) {
@@ -39,24 +39,24 @@
     return null;
   }
 
-  // Legge il parametro "mode" dall'URL del documento target senza accedere al DOM
+  // Reads the "mode" parameter from the target document URL without accessing the DOM
   function getPageMode(iDoc) {
     try { return new URLSearchParams(iDoc.location.search).get('mode') || ''; }
     catch (e) { return ''; }
   }
 
-  // Restituisce il documento su cui operare, gestendo sia il caso iframe (index.py con
-  // sidebar) che il caso direct (wato.py aperto senza sidebar, nessun iframe presente).
+  // Returns the document to operate on, handling both the iframe case (index.py with
+  // sidebar) and the direct case (wato.py opened without sidebar, no iframe present).
   function getTargetDoc() {
     const iframe = document.querySelector('iframe[name="main"], iframe#main');
     if (iframe) { try { return iframe.contentDocument; } catch (e) { return null; } }
     return document;
   }
 
-  // Pagine che supportano gli accordion badge (stessa struttura form_edit_host + table.nform)
+  // Pages that support accordion badges (same form_edit_host + table.nform structure)
   const ACCORDION_MODES = new Set(['edit_host', 'bulkedit', 'editfolder']);
 
-  // Inietta CSS nel documento target (una sola volta, deduplica per id)
+  // Injects CSS into the target document (once only, deduplicated by id)
   function injectStyles(iDoc, id, css) {
     if (iDoc.getElementById(id)) return;
     const style = iDoc.createElement('style');
@@ -69,9 +69,9 @@
   // =========================================================================
   // FEATURE: Folder Path Select Enhancement
   //
-  // Migliora la <select> del folder path in WATO mostrando il path completo
-  // in stile "Radice › Livello › Foglia" e abilitando la ricerca su di esso.
-  // Si attiva solo quando la select #explicit_conditions_p_folder_path è presente.
+  // Improves the folder path <select> in WATO by showing the full path
+  // in "Root › Level › Leaf" style and enabling search on it.
+  // Only activates when the #explicit_conditions_p_folder_path select is present.
   // =========================================================================
 
   const FOLDER_SELECT_ID = 'explicit_conditions_p_folder_path';
@@ -106,7 +106,7 @@
       const existing = getSelect2Instance(iDoc, sel);
       if (existing && typeof existing.destroy === 'function') existing.destroy();
     } catch (e) {
-      console.warn(LOG_PREFIX, 'Impossibile distruggere Select2:', e);
+      console.warn(LOG_PREFIX, 'Failed to destroy Select2:', e);
     }
 
     initSelect2Enhanced(iDoc, sel);
@@ -168,7 +168,7 @@
         injectFolderStyles(iDoc);
         return;
       } catch (e) {
-        console.warn(LOG_PREFIX, 'jQuery Select2 init fallita:', e);
+        console.warn(LOG_PREFIX, 'jQuery Select2 init failed:', e);
       }
     }
 
@@ -178,11 +178,11 @@
         injectFolderStyles(iDoc);
         return;
       } catch (e) {
-        console.warn(LOG_PREFIX, 'Select2 standalone init fallita:', e);
+        console.warn(LOG_PREFIX, 'Select2 standalone init failed:', e);
       }
     }
 
-    // Fallback: overlay di ricerca custom sopra il select2 nativo
+    // Fallback: custom search overlay over the native select2
     buildCustomSearchOverlay(iDoc, sel);
   }
 
@@ -213,7 +213,7 @@
 
     const searchInput = iDoc.createElement('input');
     searchInput.type = 'text';
-    searchInput.placeholder = 'Cerca folder per nome o path... (es: veeam, dc1/veeam)';
+    searchInput.placeholder = 'Search folder by name or path... (e.g.: veeam, dc1/veeam)';
     searchInput.autocomplete = 'off';
     searchInput.spellcheck = false;
     searchInput.style.cssText = `
@@ -273,7 +273,7 @@
     function renderDropdown(filter) {
       dropdown.innerHTML = '';
       const term = filter.trim().toLowerCase();
-      // Normalizza separatori: >, ›, / sono equivalenti nella ricerca
+      // Normalize separators: >, ›, / are equivalent in search
       const normTerm = term.replace(/\s*[>/›]\s*/g, '/');
       const filtered = term
         ? options.filter(o =>
@@ -286,7 +286,7 @@
 
       if (filtered.length === 0) {
         const noRes = iDoc.createElement('div');
-        noRes.textContent = 'Nessun risultato';
+        noRes.textContent = 'No results';
         noRes.style.cssText = 'padding: 6px 10px; color: #aaa;';
         dropdown.appendChild(noRes);
       }
@@ -338,7 +338,7 @@
 
       if (filtered.length > 200) {
         const more = iDoc.createElement('div');
-        more.textContent = `... e altri ${filtered.length - 200} risultati. Raffina la ricerca.`;
+        more.textContent = `... and ${filtered.length - 200} more results. Refine your search.`;
         more.style.cssText = 'padding: 6px 10px; color: #aaa; font-style: italic;';
         dropdown.appendChild(more);
       }
@@ -432,9 +432,9 @@
   // =========================================================================
   // FEATURE: Accordion Checked Count Badge
   //
-  // Mostra nel titolo di ogni accordion della pagina edit_host il numero
-  // di checkbox attive nel gruppo. Es: "Services - DB (1)".
-  // Il contatore si aggiorna in tempo reale al cambio delle checkbox.
+  // Shows in each accordion title on the edit_host page the number
+  // of active checkboxes in the group. E.g.: "Services - DB (1)".
+  // The counter updates in real time when checkboxes change.
   // =========================================================================
 
   function updateAccordionBadge(td) {
@@ -581,10 +581,10 @@
   // =========================================================================
   // FEATURE: Ineffective Rule Highlight
   //
-  // Nelle pagine mode=edit_ruleset sostituisce l'icona poco visibile
-  // "icon_hyphen.svg" (title="Ineffective rule") con un badge colorato
-  // e aggiunge un bordo sinistro alla riga.
-  // Funziona sia su wato.py diretto (no iframe) che dentro index.py (iframe).
+  // In mode=edit_ruleset pages, replaces the barely visible
+  // "icon_hyphen.svg" (title="Ineffective rule") icon with a colored badge
+  // and adds a left border to the row.
+  // Works on both direct wato.py (no iframe) and inside index.py (iframe).
   // =========================================================================
 
   function highlightIneffectiveRules(doc) {
@@ -635,10 +635,10 @@
   // =========================================================================
   // FEATURE: Rule Match Status Highlight
   //
-  // Nelle pagine mode=edit_ruleset aperte con contesto host/service (parametri
-  // host= e service= nell'URL), evidenzia le righe che matchano (verde) e
-  // attenua quelle che non matchano (grigio), sostituendo le icone poco
-  // visibili icon_checkmark e icon_hyphen con badge colorati.
+  // In mode=edit_ruleset pages opened with host/service context (host= and
+  // service= parameters in the URL), highlights matching rows (green) and
+  // dims non-matching ones (grey), replacing the barely visible icon_checkmark
+  // and icon_hyphen icons with colored badges.
   // =========================================================================
 
   function highlightRuleMatchStatus(doc) {
@@ -720,10 +720,10 @@
   // =========================================================================
   // FEATURE: Ruleset Filter Toggle
   //
-  // Dopo che le funzioni di highlight hanno marcato le righe rilevanti
-  // (match, no-match, ineffective), aggiunge una barra in cima con un pulsante
-  // per nascondere le righe e i folder senza alcuna rilevanza. Utile su
-  // pagine con centinaia di regole dove quelle rilevanti sono poche.
+  // After the highlight functions have marked the relevant rows
+  // (match, no-match, ineffective), adds a bar at the top with a button
+  // to hide rows and folders with no relevance. Useful on pages with
+  // hundreds of rules where only a few are relevant.
   // =========================================================================
 
   function addRulesetFilterToggle(doc) {
@@ -732,7 +732,7 @@
 
     const RELEVANT_SEL = 'tr.cmk-sk-rule-match, tr.cmk-sk-rule-nomatch, tr.cmk-sk-ineffective';
 
-    // Nessuna riga evidenziata = nessuna ricerca attiva, toggle inutile
+    // No highlighted rows = no active search, toggle is useless
     const relevantCount = doc.querySelectorAll(RELEVANT_SEL).length;
     if (!relevantCount) return;
 
@@ -791,15 +791,15 @@
     const btn = doc.createElement('button');
     btn.id = 'cmk-sk-filter-toggle-btn';
     btn.type = 'button';
-    btn.textContent = 'Solo rilevanti';
+    btn.textContent = 'Relevant only';
 
     const info = doc.createElement('span');
-    info.textContent = `${relevantCount} rilevanti · ${irrelevantRows} righe e ${irrelevantFolders} folder non rilevanti`;
+    info.textContent = `${relevantCount} relevant · ${irrelevantRows} rows and ${irrelevantFolders} folders not relevant`;
 
     btn.addEventListener('click', () => {
       const isActive = doc.body.classList.toggle('cmk-sk-filter-active');
       btn.classList.toggle('active', isActive);
-      btn.textContent = isActive ? 'Mostra tutto' : 'Solo rilevanti';
+      btn.textContent = isActive ? 'Show all' : 'Relevant only';
     });
 
     bar.appendChild(btn);
@@ -811,11 +811,11 @@
 
 
   // =========================================================================
-  // FEATURE: Inventory Button su view.py
+  // FEATURE: Inventory Button on view.py
   //
-  // Nelle pagine view.py (monitoring views), aggiunge un piccolo pulsante
-  // accanto a ogni hostname nella colonna Host per aprire direttamente la
-  // pagina di Service Discovery dell'host in una nuova tab.
+  // In view.py pages (monitoring views), adds a small button next to each
+  // hostname in the Host column to directly open the host's Service Discovery
+  // page in a new tab.
   // =========================================================================
 
   function addInventoryButtons(doc) {
@@ -902,7 +902,7 @@
       const copyBtn = doc.createElement('button');
       copyBtn.className = 'cmk-sk-copy-btn';
       copyBtn.type = 'button';
-      copyBtn.title = `Copia hostname: ${hostname}`;
+      copyBtn.title = `Copy hostname: ${hostname}`;
       copyBtn.innerHTML = CLIP_SVG;
       copyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(hostname).then(() => {
@@ -914,7 +914,7 @@
       const copyShortBtn = doc.createElement('button');
       copyShortBtn.className = 'cmk-sk-copy-short-btn';
       copyShortBtn.type = 'button';
-      copyShortBtn.title = `Copia hostname corto: ${shortname}`;
+      copyShortBtn.title = `Copy short hostname: ${shortname}`;
       copyShortBtn.innerHTML = CLIP_SVG;
       copyShortBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(shortname).then(() => {
@@ -934,12 +934,12 @@
 
 
   // =========================================================================
-  // FEATURE: Monitor Button su wato.py (mode=folder)
+  // FEATURE: Monitor Button on wato.py (mode=folder)
   //
-  // Nelle pagine WATO folder, aggiunge un piccolo pulsante accanto all'hostname
-  // di ogni host attivo (non disabilitato) per aprire la vista di monitoraggio
-  // in una nuova tab. Il pulsante occupa lo spazio dove appare l'icona X per
-  // gli host disabilitati, mantenendo l'allineamento delle colonne.
+  // In WATO folder pages, adds a small button next to the hostname of each
+  // active (non-disabled) host to open the monitoring view in a new tab.
+  // The button occupies the space where the X icon appears for disabled hosts,
+  // maintaining column alignment.
   // =========================================================================
 
   function addWatoFolderMonitorButtons(doc) {
@@ -977,17 +977,17 @@
 
     let active = 0, disabled = 0;
     doc.querySelectorAll('table.data td').forEach(td => {
-      // Hostname cell: contiene esattamente un link con mode=edit_host il cui testo è l'hostname
+      // Hostname cell: contains exactly one link with mode=edit_host whose text is the hostname
       const links = td.querySelectorAll('a[href*="mode=edit_host"]');
       if (links.length !== 1) return;
       const link = links[0];
       const hostname = new URLSearchParams((link.getAttribute('href') || '').split('?')[1] || '').get('host');
       if (!hostname || link.textContent.trim() !== hostname) return;
 
-      // Salta host disabilitati (hanno img con title="This host is disabled" nella stessa cella)
+      // Skip disabled hosts (they have an img with title="This host is disabled" in the same cell)
       if (td.querySelector('img[title="This host is disabled"]')) { disabled++; return; }
 
-      // Evita doppio inserimento
+      // Prevent duplicate insertion
       if (td.querySelector('.cmk-sk-mon-btn')) return;
 
       const viewUrl = base + 'view.py?host=' + encodeURIComponent(hostname) + '&view_name=host';
@@ -1022,18 +1022,18 @@
 
 
   // =========================================================================
-  // FEATURE: "Configura in WATO" menu su view.py
+  // FEATURE: "Configure in WATO" menu on view.py
   //
-  // Aggiunge una <select> paginata nel menu bar (Commands/Hosts/Export/...) delle
-  // viste di monitoraggio live. Ogni opzione apre WATO con un gruppo di max 50
-  // host, pre-filtrati per hostname esatto via regex ~^(h1|h2|...)$.
+  // Adds a paginated <select> to the menu bar (Commands/Hosts/Export/...) of
+  // live monitoring views. Each option opens WATO with a group of up to 50
+  // hosts, pre-filtered by exact hostname via regex ~^(h1|h2|...)$.
   // =========================================================================
 
   const WATO_PAGE_SIZE = 50;
 
-  // Vero se l'utente corrente ha accesso a WATO (ruolo admin/configurazione).
-  // Con sidebar: il documento esterno ha link wato.py nella navigazione Setup.
-  // Senza sidebar: il shortcut "pending changes" appare solo per WATO admin.
+  // True if the current user has WATO access (admin/configuration role).
+  // With sidebar: the outer document has a wato.py link in the Setup navigation.
+  // Without sidebar: the "pending changes" shortcut only appears for WATO admins.
   function hasWatoAccess(doc) {
     if (document !== doc && document.querySelector('a[href*="wato.py"]')) return true;
     if (doc.querySelector('a[href*="wato.py"][href*="mode=changelog"]')) return true;
@@ -1111,7 +1111,7 @@
 
 
   // =========================================================================
-  // BOOTSTRAP: polling per ogni feature, attivato solo se la select è presente
+  // BOOTSTRAP: polling for each feature, activated only if the select is present
   // =========================================================================
 
   let attemptsFolder    = 0;
@@ -1154,7 +1154,7 @@
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
       return;
     }
-    // Guard URL: attiva solo sulle pagine con accordion supportati
+    // URL guard: only activates on pages with supported accordions
     if (!ACCORDION_MODES.has(getPageMode(iDoc))) return;
     if (!initAccordionCheckedCounts(iDoc)) {
       if (++attemptsAcc < MAX_ATTEMPTS) setTimeout(tryInitAccordionCounts, POLL_INTERVAL_MS);
@@ -1190,7 +1190,7 @@
       return;
     }
     try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
-    // Aspetta che la tabella dati sia presente
+    // Wait until the data table is present
     if (!doc.querySelector('tr.data td.nobr a[href*="host="]')) {
       if (++attemptsViewWato < MAX_ATTEMPTS) setTimeout(tryAddViewWatoMenu, POLL_INTERVAL_MS);
       return;
@@ -1220,21 +1220,21 @@
     attemptsInventory = 0;
     attemptsFolderMon = 0;
     attemptsViewWato  = 0;
-    // Folder select: si auto-ferma se non trova l'elemento, schedula sempre.
+    // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
-    // Accordion: solo sulle pagine in ACCORDION_MODES.
+    // Accordion: only on pages in ACCORDION_MODES.
     if (!mode || ACCORDION_MODES.has(mode)) {
       setTimeout(tryInitAccordionCounts, 800);
     }
-    // Ruleset enhancements (ineffective + match status): solo su edit_ruleset.
+    // Ruleset enhancements (ineffective + match status): only on edit_ruleset.
     if (!targetMode || targetMode === 'edit_ruleset') {
       setTimeout(tryHighlightRuleset, 300);
     }
-    // Inventory button: su view.py, si auto-ferma se non applicabile.
+    // Inventory button: on view.py, self-stops if not applicable.
     setTimeout(tryAddInventoryButtons, 500);
-    // Monitor button: su wato.py mode=folder, si auto-ferma se non applicabile.
+    // Monitor button: on wato.py mode=folder, self-stops if not applicable.
     setTimeout(tryAddWatoFolderMonitorButtons, 500);
-    // WATO menu: su view.py con host rows, si auto-ferma se non applicabile.
+    // WATO menu: on view.py with host rows, self-stops if not applicable.
     setTimeout(tryAddViewWatoMenu, 800);
   }
 
@@ -1244,7 +1244,7 @@
     window.addEventListener('load', init);
   }
 
-  // Rileva navigazione SPA (cambio regola senza reload di pagina)
+  // Detect SPA navigation (page change without full reload)
   new MutationObserver(() => {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     if (!iDoc) return;
@@ -1286,7 +1286,7 @@
     }
   }).observe(document.body, { childList: true, subtree: true });
 
-  // Riavvia al caricamento dell'iframe (layout con sidebar)
+  // Restart on iframe load (sidebar layout)
   const mainIframe = document.querySelector('iframe[name="main"], iframe#main');
   if (mainIframe) {
     mainIframe.addEventListener('load', init);
