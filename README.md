@@ -94,4 +94,5 @@ The script injects enhancements at page load and re-applies them on SPA navigati
 
 ## License
 
-MIT — see [LICENSE](LICENSE) if present, otherwise consider it free for any use.
+[CC BY-NC 4.0](LICENSE) — free to use, share, and adapt for non-commercial purposes.
+Commercial use or resale is not permitted.
