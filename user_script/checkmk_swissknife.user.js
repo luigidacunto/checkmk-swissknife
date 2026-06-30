@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.13.1
+// @version      2.13.2
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1066,13 +1066,13 @@
     wrapper.style.cssText = 'display:inline-flex;align-items:center;padding:0 8px;border-left:1px solid rgba(255,255,255,0.15);';
 
     const sel = doc.createElement('select');
-    sel.style.cssText = 'background:#3b3b3b;color:#ccc;border:1px solid #555;border-radius:3px;padding:2px 5px;font-size:12px;cursor:pointer;vertical-align:middle;';
+    sel.style.cssText = 'background:#444;color:#ddd;border:1px solid #888;border-radius:3px;padding:2px 5px;font-size:12px;cursor:pointer;vertical-align:middle;';
 
     const placeholder = doc.createElement('option');
     placeholder.value = '';
     placeholder.disabled = true;
     placeholder.selected = true;
-    placeholder.textContent = 'WATO (' + hosts.length + ')';
+    placeholder.textContent = 'Select hosts (' + hosts.length + ')';
     sel.appendChild(placeholder);
 
     for (let i = 0; i < pages; i++) {
@@ -1084,11 +1084,19 @@
       sel.appendChild(opt);
     }
 
+    const BTN_STYLE_OFF = 'margin-left:4px;background:#555;color:#999;border:1px solid #777;border-radius:3px;padding:2px 7px;font-size:12px;cursor:not-allowed;vertical-align:middle;';
+    const BTN_STYLE_ON  = 'margin-left:4px;background:#1a73e8;color:#fff;border:1px solid #1a73e8;border-radius:3px;padding:2px 7px;font-size:12px;cursor:pointer;vertical-align:middle;';
+
     const btn = doc.createElement('button');
     btn.textContent = 'Apri';
-    btn.style.cssText = 'margin-left:4px;background:#555;color:#ccc;border:1px solid #777;border-radius:3px;padding:2px 7px;font-size:12px;cursor:pointer;vertical-align:middle;';
-    btn.addEventListener('mouseover', () => { btn.style.background = '#6a6a6a'; });
-    btn.addEventListener('mouseout', () => { btn.style.background = '#555'; });
+    btn.disabled = true;
+    btn.style.cssText = BTN_STYLE_OFF;
+
+    sel.addEventListener('change', function () {
+      const valid = sel.value !== '';
+      btn.disabled = !valid;
+      btn.style.cssText = valid ? BTN_STYLE_ON : BTN_STYLE_OFF;
+    });
 
     btn.addEventListener('click', function () {
       const page = parseInt(sel.value);
@@ -1102,6 +1110,8 @@
         + '&filled_in=edit_host';
       window.open(url, '_blank');
       sel.value = '';
+      btn.disabled = true;
+      btn.style.cssText = BTN_STYLE_OFF;
     });
 
     wrapper.appendChild(sel);
