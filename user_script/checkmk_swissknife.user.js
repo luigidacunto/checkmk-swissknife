@@ -1130,6 +1130,7 @@
   let attemptsInventory = 0;
   let attemptsFolderMon = 0;
   let attemptsViewWato  = 0;
+  let attemptsChangelog = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1193,6 +1194,25 @@
     addInventoryButtons(doc);
   }
 
+  // =========================================================================
+  // FEATURE: Auto-check "Activate foreign changes" on changelog page
+  // =========================================================================
+
+  function tryAutoCheckForeignActivation() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsChangelog < MAX_ATTEMPTS) setTimeout(tryAutoCheckForeignActivation, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (getPageMode(doc) !== 'changelog') return; } catch (e) { return; }
+    const cb = doc.getElementById('cb_activate_p_foreign');
+    if (!cb) {
+      if (++attemptsChangelog < MAX_ATTEMPTS) setTimeout(tryAutoCheckForeignActivation, POLL_INTERVAL_MS);
+      return;
+    }
+    if (!cb.checked) cb.click();
+  }
+
   function tryAddViewWatoMenu() {
     const doc = getTargetDoc();
     if (!doc || !doc.body) {
@@ -1230,6 +1250,7 @@
     attemptsInventory = 0;
     attemptsFolderMon = 0;
     attemptsViewWato  = 0;
+    attemptsChangelog = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1246,6 +1267,8 @@
     setTimeout(tryAddWatoFolderMonitorButtons, 500);
     // WATO menu: on view.py with host rows, self-stops if not applicable.
     setTimeout(tryAddViewWatoMenu, 800);
+    // Auto-check foreign activation: only on mode=changelog.
+    if (!targetMode || targetMode === 'changelog') setTimeout(tryAutoCheckForeignActivation, 500);
   }
 
   if (document.readyState === 'complete') {
