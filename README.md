@@ -99,6 +99,20 @@ On the **Activate pending changes** page, automatically checks the *Activate for
 
 Applies to: `wato.py?mode=changelog` (with or without sidebar).
 
+---
+
+### Collapse All / Expand All
+Adds two buttons to the top menu bar on any page with expandable sections:
+
+| Button | Color | Action |
+|--------|-------|--------|
+| **Collapse All** | Orange | Collapses all open accordion sections at once |
+| **Expand All** | Green | Expands all collapsed accordion sections at once |
+
+Works on both host-edit pages (accordion sections are `table.nform` elements) and ruleset pages (accordion sections are `div.foldable` elements).
+
+Applies to: `edit_host`, `bulkedit`, `editfolder`, `edit_ruleset` (with or without sidebar).
+
 ## How it works
 
 The script injects enhancements at page load and re-applies them on SPA navigation (Checkmk reloads content inside an `<iframe>` without a full page reload). Each feature is independent — a feature that does not apply to the current page does nothing and stops polling.

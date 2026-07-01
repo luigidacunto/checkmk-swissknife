@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.14.0
+// @version      2.15.0
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1151,6 +1151,7 @@
   let attemptsFolderMon = 0;
   let attemptsViewWato  = 0;
   let attemptsChangelog = 0;
+  let attemptsAccToggle = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1259,6 +1260,71 @@
     addWatoFolderMonitorButtons(doc);
   }
 
+  // =========================================================================
+  // Collapse All / Expand All buttons in the top menu bar.
+  // Works on edit_host / bulkedit / editfolder (table.nform accordions)
+  // and edit_ruleset (div.foldable accordions). Uses getTargetDoc() so it
+  // works with and without the sidebar iframe.
+  // =========================================================================
+
+  function addAccordionToggleButtons(doc) {
+    if (doc.body.dataset.cmkAccToggle === '1') return;
+    const menues = doc.querySelector('td.menues');
+    if (!menues) return;
+    if (!doc.querySelector('table.nform') && !doc.querySelector('div.foldable')) return;
+
+    injectStyles(doc, 'cmk-sk-acc-toggle-style', `
+      #cmk-sk-acc-toggle-btns {
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-left: 10px; padding-left: 10px;
+        border-left: 1px solid rgba(255,255,255,0.2);
+        vertical-align: middle;
+      }
+      .cmk-sk-acc-btn {
+        background: transparent; border-radius: 3px;
+        padding: 2px 6px; font-size: 11px; font-family: monospace;
+        font-weight: bold; cursor: pointer; white-space: nowrap; letter-spacing: 0.03em;
+      }
+      .cmk-sk-acc-btn.collapse { color: #e67e22; border: 1px solid #e67e22; }
+      .cmk-sk-acc-btn.collapse:hover { background: rgba(230,126,34,0.15); }
+      .cmk-sk-acc-btn.expand   { color: #27ae60; border: 1px solid #27ae60; }
+      .cmk-sk-acc-btn.expand:hover   { background: rgba(39,174,96,0.15); }
+    `);
+
+    const wrap = doc.createElement('div');
+    wrap.id = 'cmk-sk-acc-toggle-btns';
+
+    const collapseBtn = doc.createElement('button');
+    collapseBtn.className = 'cmk-sk-acc-btn collapse';
+    collapseBtn.textContent = 'Collapse All';
+    collapseBtn.addEventListener('click', () => {
+      doc.querySelectorAll('table.nform.open thead tr.heading td[onclick]').forEach(td => td.click());
+      doc.querySelectorAll('div.foldable.open div.foldable_header[onclick]').forEach(h => h.click());
+    });
+
+    const expandBtn = doc.createElement('button');
+    expandBtn.className = 'cmk-sk-acc-btn expand';
+    expandBtn.textContent = 'Expand All';
+    expandBtn.addEventListener('click', () => {
+      doc.querySelectorAll('table.nform.closed thead tr.heading td[onclick]').forEach(td => td.click());
+      doc.querySelectorAll('div.foldable.closed div.foldable_header[onclick]').forEach(h => h.click());
+    });
+
+    wrap.appendChild(collapseBtn);
+    wrap.appendChild(expandBtn);
+    menues.appendChild(wrap);
+    doc.body.dataset.cmkAccToggle = '1';
+  }
+
+  function tryAddAccordionToggleButtons() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsAccToggle < MAX_ATTEMPTS) setTimeout(tryAddAccordionToggleButtons, POLL_INTERVAL_MS);
+      return;
+    }
+    addAccordionToggleButtons(doc);
+  }
+
   function init() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     const mode = getPageMode(iDoc);
@@ -1271,6 +1337,7 @@
     attemptsFolderMon = 0;
     attemptsViewWato  = 0;
     attemptsChangelog = 0;
+    attemptsAccToggle = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1281,6 +1348,8 @@
     if (!targetMode || targetMode === 'edit_ruleset') {
       setTimeout(tryHighlightRuleset, 300);
     }
+    // Collapse/Expand All: on pages with nform or foldable accordions.
+    setTimeout(tryAddAccordionToggleButtons, 600);
     // Inventory button: on view.py, self-stops if not applicable.
     setTimeout(tryAddInventoryButtons, 500);
     // Monitor button: on wato.py mode=folder, self-stops if not applicable.
@@ -1336,6 +1405,10 @@
           setTimeout(tryAddViewWatoMenu, 300);
         }
       } catch (e) {}
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkAccToggle) {
+      attemptsAccToggle = 0;
+      setTimeout(tryAddAccordionToggleButtons, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
