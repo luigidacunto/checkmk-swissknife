@@ -59,14 +59,17 @@ Applies to: `mode=edit_ruleset` (when at least one highlighted row exists).
 
 ---
 
-### Inventory Buttons on Monitoring Views
-Adds three icon buttons before each hostname in monitoring view tables:
+### Extra Column with Host Actions
+Adds a dedicated **Extra** column before the Host column in all monitoring view tables. Each row gets up to four icon buttons:
 
-| Button | Action |
-|--------|--------|
-| Screen icon | Opens **Service Discovery** for the host in a new tab |
-| Clipboard icon (blue) | Copies the full FQDN to clipboard |
-| Clipboard icon (purple) | Copies the short hostname (first label) to clipboard |
+| Button | Color | Action |
+|--------|-------|--------|
+| Screen icon | Amber | Opens **Service Discovery** for the host in a new tab |
+| Clipboard icon | Blue | Copies the full FQDN to clipboard |
+| Clipboard icon | Purple | Copies the short hostname (first label) to clipboard |
+| Clipboard icon | Green | Copies the host **IP address** to clipboard *(shown only when available)* |
+
+The IP address is read from the tooltip Checkmk places on the hostname cell. Clicking any clipboard button briefly turns it green to confirm the copy.
 
 Applies to: `view.py` host and service views.
 
