@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.13.3
+// @version      2.14.0
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -821,18 +821,14 @@
   function addInventoryButtons(doc) {
     if (doc.body.dataset.cmkInventoryBtns === '1') return;
 
-    const hostCells = doc.querySelectorAll('table.data td.nobr');
-    if (!hostCells.length) return;
+    const tables = doc.querySelectorAll('table.data');
+    if (!tables.length) return;
 
     injectStyles(doc, 'cmk-sk-inv-btn-styles', `
-      .cmk-sk-btn-group {
-        display: inline-flex;
-        align-items: center;
-        gap: 2px;
-        margin-right: 4px;
-        vertical-align: middle;
-      }
-      .cmk-sk-inv-btn, .cmk-sk-copy-btn, .cmk-sk-copy-short-btn {
+      .cmk-sk-extra-th { text-align: center; padding: 2px 6px; font-size: 11px; white-space: nowrap; }
+      .cmk-sk-extra-td { white-space: nowrap; padding: 1px 4px; vertical-align: middle; text-align: center; }
+      .cmk-sk-btn-group { display: inline-flex; align-items: center; gap: 2px; }
+      .cmk-sk-inv-btn, .cmk-sk-copy-btn, .cmk-sk-copy-short-btn, .cmk-sk-copy-ip-btn {
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -841,7 +837,6 @@
         border-radius: 3px !important;
         cursor: pointer !important;
         opacity: 0.8;
-        flex-shrink: 0;
         padding: 0 !important;
         margin: 1px !important;
         box-sizing: border-box !important;
@@ -856,19 +851,13 @@
         border: 1px solid #e5a500 !important;
       }
       .cmk-sk-inv-btn:hover { opacity: 1 !important; background: rgba(229,165,0,0.18) !important; }
-      .cmk-sk-copy-btn {
-        background: rgba(90,180,214,0.08) !important;
-        color: #5ab4d6 !important;
-        border: 1px solid #5ab4d6 !important;
-      }
+      .cmk-sk-copy-btn { background: rgba(90,180,214,0.08) !important; color: #5ab4d6 !important; border: 1px solid #5ab4d6 !important; }
       .cmk-sk-copy-btn:hover { opacity: 1; background: rgba(90,180,214,0.18) !important; }
-      .cmk-sk-copy-short-btn {
-        background: rgba(160,120,200,0.08) !important;
-        color: #a078c8 !important;
-        border: 1px solid #a078c8 !important;
-      }
+      .cmk-sk-copy-short-btn { background: rgba(160,120,200,0.08) !important; color: #a078c8 !important; border: 1px solid #a078c8 !important; }
       .cmk-sk-copy-short-btn:hover { opacity: 1; background: rgba(160,120,200,0.18) !important; }
-      .cmk-sk-copy-btn.copied, .cmk-sk-copy-short-btn.copied {
+      .cmk-sk-copy-ip-btn { background: rgba(102,187,106,0.08) !important; color: #66bb6a !important; border: 1px solid #66bb6a !important; }
+      .cmk-sk-copy-ip-btn:hover { opacity: 1; background: rgba(102,187,106,0.18) !important; }
+      .cmk-sk-copy-btn.copied, .cmk-sk-copy-short-btn.copied, .cmk-sk-copy-ip-btn.copied {
         border-color: #4caf50 !important;
         color: #4caf50 !important;
         background: rgba(76,175,80,0.12) !important;
@@ -878,58 +867,89 @@
     `);
 
     const CLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    const DISC_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
 
-    hostCells.forEach(td => {
-      let hostname = null;
-      for (const a of td.querySelectorAll('a[href*="host="]')) {
-        const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
-        if (h) { hostname = h; break; }
+    function mkCopy(cls, text, label) {
+      const b = doc.createElement('button');
+      b.className = cls; b.type = 'button'; b.title = label; b.innerHTML = CLIP_SVG;
+      b.addEventListener('click', () => navigator.clipboard.writeText(text).then(() => {
+        b.classList.add('copied'); setTimeout(() => b.classList.remove('copied'), 900);
+      }));
+      return b;
+    }
+
+    let found = false;
+
+    tables.forEach(table => {
+      // Trova indice colonna host dalla prima riga dati con link host
+      let hostColIdx = -1;
+      for (const tr of table.querySelectorAll('tr.data')) {
+        const cells = [...tr.children];
+        for (let i = 0; i < cells.length; i++) {
+          if (!cells[i].classList.contains('nobr')) continue;
+          const a = cells[i].querySelector('a[href*="host="]');
+          if (!a) continue;
+          const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
+          if (h) { hostColIdx = i; break; }
+        }
+        if (hostColIdx !== -1) break;
       }
-      if (!hostname) return;
-      const shortname = hostname.split('.')[0];
+      if (hostColIdx === -1) return;
 
-      const group = doc.createElement('span');
-      group.className = 'cmk-sk-btn-group';
+      found = true;
 
-      const btn = doc.createElement('a');
-      btn.className = 'cmk-sk-inv-btn';
-      btn.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
-      btn.target = '_blank';
-      btn.rel = 'noopener';
-      btn.title = `Service Discovery: ${hostname}`;
-      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 9 9 12 14 7" stroke-width="2"/></svg>';
+      // Inserisci <th>Extra</th> nell'header (primo tr con th figli)
+      const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      if (headerRow && !headerRow.querySelector('.cmk-sk-extra-th')) {
+        const th = doc.createElement('th');
+        th.textContent = 'Extra';
+        th.className = 'cmk-sk-extra-th';
+        headerRow.insertBefore(th, [...headerRow.children][hostColIdx] || null);
+      }
 
-      const copyBtn = doc.createElement('button');
-      copyBtn.className = 'cmk-sk-copy-btn';
-      copyBtn.type = 'button';
-      copyBtn.title = `Copy hostname: ${hostname}`;
-      copyBtn.innerHTML = CLIP_SVG;
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(hostname).then(() => {
-          copyBtn.classList.add('copied');
-          setTimeout(() => copyBtn.classList.remove('copied'), 900);
-        });
+      // Aggiorna colspan dei groupheader
+      table.querySelectorAll('tr.groupheader td[colspan]').forEach(td => { td.colSpan++; });
+
+      // Processa righe dati
+      table.querySelectorAll('tr.data').forEach(tr => {
+        if (tr.querySelector('.cmk-sk-extra-td')) return;
+        const cells = [...tr.children];
+        const hostTd = cells[hostColIdx];
+        const extraTd = doc.createElement('td');
+        extraTd.className = 'cmk-sk-extra-td';
+
+        if (hostTd && hostTd.classList.contains('nobr')) {
+          const a = hostTd.querySelector('a[href*="host="]');
+          // IP è nel title dello span che wrappa l'anchor: <span title="x.x.x.x"><a>...</a></span>
+          const ip = (hostTd.querySelector('span[title]') || {}).title || null;
+          if (a) {
+            const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
+            if (h) {
+              const hostname = h, shortname = h.split('.')[0];
+              const group = doc.createElement('span');
+              group.className = 'cmk-sk-btn-group';
+
+              const disc = doc.createElement('a');
+              disc.className = 'cmk-sk-inv-btn';
+              disc.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
+              disc.target = '_blank'; disc.rel = 'noopener';
+              disc.title = `Service Discovery: ${hostname}`;
+              disc.innerHTML = DISC_SVG;
+
+              group.appendChild(disc);
+              group.appendChild(mkCopy('cmk-sk-copy-btn', hostname, `Copy hostname: ${hostname}`));
+              group.appendChild(mkCopy('cmk-sk-copy-short-btn', shortname, `Copy short hostname: ${shortname}`));
+              if (ip) group.appendChild(mkCopy('cmk-sk-copy-ip-btn', ip, `Copy IP: ${ip}`));
+
+              extraTd.appendChild(group);
+            }
+          }
+        }
+        tr.insertBefore(extraTd, hostTd || null);
       });
-
-      const copyShortBtn = doc.createElement('button');
-      copyShortBtn.className = 'cmk-sk-copy-short-btn';
-      copyShortBtn.type = 'button';
-      copyShortBtn.title = `Copy short hostname: ${shortname}`;
-      copyShortBtn.innerHTML = CLIP_SVG;
-      copyShortBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(shortname).then(() => {
-          copyShortBtn.classList.add('copied');
-          setTimeout(() => copyShortBtn.classList.remove('copied'), 900);
-        });
-      });
-
-      group.appendChild(btn);
-      group.appendChild(copyBtn);
-      group.appendChild(copyShortBtn);
-      td.prepend(group);
     });
 
-    doc.body.dataset.cmkInventoryBtns = '1';
+    if (found) doc.body.dataset.cmkInventoryBtns = '1';
   }
 
 
