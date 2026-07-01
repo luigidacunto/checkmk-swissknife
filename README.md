@@ -15,6 +15,21 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 
 ## Features
 
+| Feature | Description | Code function |
+|---------|-------------|---------------|
+| **Folder Path Search** | Replaces the folder dropdown with a searchable overlay — type any path segment to filter instantly | `initSelect2Enhanced` |
+| **Accordion Badge Counts** | Shows inline counters in each accordion header: enabled checkboxes (orange), inherited values (blue), differing values vs folder default (red) | `initAccordionCheckedCounts` |
+| **Ineffective Rule Highlight** | Replaces the hard-to-spot hyphen icon on ineffective rules with a visible ⚠ badge and amber row border | `highlightIneffectiveRules` |
+| **Rule Match Status** | Colors each rule row green (match) or dimmed (no match) when a ruleset is opened with host/service context | `highlightRuleMatchStatus` |
+| **Relevant Only Filter** | Adds a "Relevant only" toggle above the rule list to hide all non-matching and non-highlighted rows | `addRulesetFilterToggle` |
+| **Extra Column — Host Actions** | Inserts an Extra column in monitoring tables with per-host buttons: Service Discovery, copy FQDN, copy short hostname, copy IP | `addInventoryButtons` |
+| **Monitor Button in WATO Folder** | Adds a green eye icon next to each active host in WATO folder listings to open its monitoring view in a new tab | `addWatoFolderMonitorButtons` |
+| **Configure in WATO Menu** | Adds a host-selector dropdown and Open button to the monitoring view menu bar for bulk-opening hosts in WATO | `addViewWatoMenu` |
+| **Auto-check Foreign Changes** | Automatically ticks the "Activate foreign changes" checkbox on the pending changes page | `tryAutoCheckForeignActivation` |
+| **Collapse All / Expand All** | Adds two buttons to the menu bar to collapse or expand all accordion sections at once | `addAccordionToggleButtons` |
+
+---
+
 ### Folder Path Search
 Replaces the default WATO folder dropdown with a searchable overlay. Type any segment of the folder path to filter — separators `>`, `›`, and `/` are treated as equivalent.
 

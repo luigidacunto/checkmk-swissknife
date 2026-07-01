@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.15.1
+// @version      2.15.2
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1052,11 +1052,11 @@
   const WATO_PAGE_SIZE = 50;
 
   // True if the current user has WATO access (admin/configuration role).
-  // With sidebar: the outer document has a wato.py link in the Setup navigation.
-  // Without sidebar: the "pending changes" shortcut only appears for WATO admins.
+  // With sidebar: outer document has wato.py links in Setup nav.
+  // Without sidebar: any wato.py link in the page suffices (incl. injected Extra column buttons).
   function hasWatoAccess(doc) {
     if (document !== doc && document.querySelector('a[href*="wato.py"]')) return true;
-    if (doc.querySelector('a[href*="wato.py"][href*="mode=changelog"]')) return true;
+    if (doc.querySelector('a[href*="wato.py"]')) return true;
     return false;
   }
 
