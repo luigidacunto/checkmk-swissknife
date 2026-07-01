@@ -80,13 +80,21 @@ Applies to: `wato.py?mode=folder`.
 ---
 
 ### "Configure in WATO" Menu
-Adds a paginated dropdown + **Open** button to the monitoring view menu bar. Selecting a page and clicking **Open** launches WATO in a new tab with exactly those hosts pre-filtered via regex search — ready for bulk configuration.
+Adds a **Select hosts (N)** dropdown and an **Open** button to the monitoring view menu bar. Select a page of hosts, then click **Open** — WATO opens in a new tab with exactly those hosts pre-filtered via regex search, ready for bulk configuration.
 
 - Up to 50 hosts per page (keeps URLs within safe length limits)
 - Deduplicates hostnames automatically (useful on service views where hosts repeat)
+- **Open** button is disabled (gray) until a page is selected; turns blue when active; resets after opening
 - Only visible for users with WATO configuration access
 
 Applies to: `view.py` (admin/configuration role required).
+
+---
+
+### Auto-check "Activate Foreign Changes"
+On the **Activate pending changes** page, automatically checks the *Activate foreign changes* checkbox as soon as the page is ready, so you never have to remember to tick it manually before activating.
+
+Applies to: `wato.py?mode=changelog` (with or without sidebar).
 
 ## How it works
 
