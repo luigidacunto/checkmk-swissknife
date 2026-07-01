@@ -5,9 +5,10 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 ## Installation
 
 1. Install the [Tampermonkey](https://www.tampermonkey.net/) browser extension.
-2. Click **Install script** below (or open the raw `.user.js` URL):
+2. Install the script from one of these sources:
 
-   [**Install Checkmk SwissKnife**](https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js)
+   - [**GreasyFork**](https://greasyfork.org/en/scripts/585184-checkmk-swissknife) *(recommended)*
+   - [**Direct install**](https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js)
 
 3. Tampermonkey will detect the `@downloadURL` and prompt for updates automatically.
 
