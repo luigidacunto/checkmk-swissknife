@@ -1269,6 +1269,7 @@
 
   function addAccordionToggleButtons(doc) {
     if (doc.body.dataset.cmkAccToggle === '1') return;
+    try { if (!/\/wato\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
     const menues = doc.querySelector('td.menues');
     if (!menues) return;
     if (!doc.querySelector('table.nform') && !doc.querySelector('div.foldable')) return;
