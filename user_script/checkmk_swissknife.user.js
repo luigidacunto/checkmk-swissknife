@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.15.2
+// @version      2.15.3
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
-// @homepageURL  https://git.luigidacunto.com/tools/checkmk-swissknife
+// @homepageURL  https://github.com/luigidacunto/checkmk-swissknife
 // @updateURL    https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @downloadURL  https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @include      /^https?:\/\/.+\/check_mk\/(index|wato|view)\.py/
