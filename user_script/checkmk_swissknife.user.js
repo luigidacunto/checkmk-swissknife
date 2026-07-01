@@ -1,4 +1,4 @@
-// ==UserScript==
+﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
 // @version      2.15.3
@@ -10,6 +10,7 @@
 // @downloadURL  https://luigidacunto.com/scripts/checkmk-swissknife/user_script/checkmk_swissknife.user.js
 // @include      /^https?:\/\/.+\/check_mk\/(index|wato|view)\.py/
 // @grant        none
+// @license      CC-BY-NC-4.0
 // ==/UserScript==
 
 (function () {
