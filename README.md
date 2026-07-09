@@ -28,6 +28,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Configure in WATO Menu** | Adds a host-selector dropdown and Open button to the monitoring view menu bar for bulk-opening hosts in WATO | `addViewWatoMenu` |
 | **Auto-check Foreign Changes** | Automatically ticks the "Activate foreign changes" checkbox on the pending changes page | `tryAutoCheckForeignActivation` |
 | **Collapse All / Expand All** | Adds two buttons to the menu bar to collapse or expand all accordion sections at once | `addAccordionToggleButtons` |
+| **Site Status Filters** | Adds Disabled / Online / Timeout / Not running toggle buttons below "Add connection" to quickly filter the site connections list | `addSitesFilterBar` |
 
 ---
 
@@ -128,6 +129,22 @@ Adds two buttons to the top menu bar on any page with expandable sections:
 Works on both host-edit pages (accordion sections are `table.nform` elements) and ruleset pages (accordion sections are `div.foldable` elements).
 
 Applies to: `edit_host`, `bulkedit`, `editfolder`, `edit_ruleset` (with or without sidebar).
+
+---
+
+### Site Status Filters
+Adds a row of quick filter buttons right below the **Add connection** shortcut on the Distributed Monitoring page:
+
+| Button | Color | Shows only sites where... |
+|--------|-------|----------------------------|
+| **Disabled** | Red | Status connection is Disabled |
+| **Online** | Green | Status connection is Online |
+| **Timeout** | Orange | Configuration connection reports a read timeout |
+| **Not running** | Gray | Configuration connection reports "Site is not running" |
+
+Only one filter can be active at a time — clicking the active button turns it off and shows all sites again. The active filter is highlighted with a solid background so it's always clear which view you're in.
+
+Applies to: `wato.py?mode=sites` (with or without sidebar).
 
 ## How it works
 

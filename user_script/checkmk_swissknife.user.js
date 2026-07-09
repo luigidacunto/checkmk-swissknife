@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.15.3
+// @version      2.16.0
 // @checkmk      2.3.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1142,6 +1142,107 @@
 
 
   // =========================================================================
+  // FEATURE: Quick status filters on Distributed Monitoring (mode=sites)
+  //
+  // Adds a row below the "Add connection" shortcut with 4 toggle buttons that
+  // filter the site connection list: Disabled / Online (from the
+  // livestatus_status_<site> icon title), Timeout and Not running (any
+  // connection_status block in the row reporting a read timeout, resp.
+  // "Site is not running" - both typically found in the Configuration
+  // connection / replication_status column).
+  // Only one filter can be active at a time; clicking the active one clears it.
+  // =========================================================================
+
+  const SITES_FILTER_PREDICATES = {
+    disabled:  row => row.querySelector('[id^="livestatus_status_"] img')?.title === 'Disabled',
+    online:    row => row.querySelector('[id^="livestatus_status_"] img')?.title === 'Online',
+    timeout:   row => [...row.querySelectorAll('.connection_status')].some(d => d.textContent.includes('Read timed out')),
+    notrunning: row => [...row.querySelectorAll('.connection_status')].some(d => d.textContent.includes('Site is not running')),
+  };
+
+  const SITES_FILTER_LABELS = { notrunning: 'Not running' };
+
+  function addSitesFilterBar(doc) {
+    if (doc.body.dataset.cmkSitesFilter === '1') return;
+    const suggestionsRow = doc.getElementById('suggestions');
+    const sitesTable = doc.querySelector('table.data');
+    if (!suggestionsRow || !sitesTable) return;
+    doc.body.dataset.cmkSitesFilter = '1';
+
+    injectStyles(doc, 'cmk-sk-sites-filter-style', `
+      #cmk-sk-sites-filter-bar {
+        display: flex; align-items: center; gap: 6px; padding: 4px 0;
+        font-family: monospace; font-size: 11px;
+      }
+      .cmk-sk-sites-filter-btn {
+        cursor: pointer; padding: 3px 10px; border-radius: 3px;
+        background: transparent; font-weight: bold; letter-spacing: 0.03em;
+        transition: background-color .1s, color .1s;
+      }
+      .cmk-sk-sites-filter-btn.disabled   { color: #e74c3c; border: 1px solid #e74c3c; }
+      .cmk-sk-sites-filter-btn.disabled:hover   { background: rgba(231,76,60,0.15); }
+      .cmk-sk-sites-filter-btn.disabled.active  { background: #e74c3c; color: #fff; }
+      .cmk-sk-sites-filter-btn.online     { color: #27ae60; border: 1px solid #27ae60; }
+      .cmk-sk-sites-filter-btn.online:hover     { background: rgba(39,174,96,0.15); }
+      .cmk-sk-sites-filter-btn.online.active    { background: #27ae60; color: #fff; }
+      .cmk-sk-sites-filter-btn.timeout    { color: #e67e22; border: 1px solid #e67e22; }
+      .cmk-sk-sites-filter-btn.timeout:hover    { background: rgba(230,126,34,0.15); }
+      .cmk-sk-sites-filter-btn.timeout.active   { background: #e67e22; color: #fff; }
+      .cmk-sk-sites-filter-btn.notrunning { color: #999; border: 1px solid #999; }
+      .cmk-sk-sites-filter-btn.notrunning:hover { background: rgba(153,153,153,0.15); }
+      .cmk-sk-sites-filter-btn.notrunning.active { background: #999; color: #111; }
+    `);
+
+    const tr = doc.createElement('tr');
+    const td = doc.createElement('td');
+    td.colSpan = 3;
+    const bar = doc.createElement('div');
+    bar.id = 'cmk-sk-sites-filter-bar';
+
+    let active = null;
+    const buttons = {};
+
+    function applyFilter() {
+      sitesTable.querySelectorAll('tr.data').forEach(row => {
+        row.style.display = (!active || SITES_FILTER_PREDICATES[active](row)) ? '' : 'none';
+      });
+      Object.entries(buttons).forEach(([key, btn]) => btn.classList.toggle('active', key === active));
+    }
+
+    Object.keys(SITES_FILTER_PREDICATES).forEach(key => {
+      const btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cmk-sk-sites-filter-btn ' + key;
+      btn.textContent = SITES_FILTER_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+      btn.addEventListener('click', () => {
+        active = active === key ? null : key;
+        applyFilter();
+      });
+      buttons[key] = btn;
+      bar.appendChild(btn);
+    });
+
+    td.appendChild(bar);
+    tr.appendChild(td);
+    suggestionsRow.after(tr);
+  }
+
+  function tryAddSitesFilterBar() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsSitesFilter < MAX_ATTEMPTS) setTimeout(tryAddSitesFilterBar, POLL_INTERVAL_MS);
+      return;
+    }
+    if (getPageMode(doc) !== 'sites') return;
+    if (!doc.getElementById('suggestions') || !doc.querySelector('table.data')) {
+      if (++attemptsSitesFilter < MAX_ATTEMPTS) setTimeout(tryAddSitesFilterBar, POLL_INTERVAL_MS);
+      return;
+    }
+    addSitesFilterBar(doc);
+  }
+
+
+  // =========================================================================
   // BOOTSTRAP: polling for each feature, activated only if the select is present
   // =========================================================================
 
@@ -1153,6 +1254,7 @@
   let attemptsViewWato  = 0;
   let attemptsChangelog = 0;
   let attemptsAccToggle = 0;
+  let attemptsSitesFilter = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1340,6 +1442,7 @@
     attemptsViewWato  = 0;
     attemptsChangelog = 0;
     attemptsAccToggle = 0;
+    attemptsSitesFilter = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1360,6 +1463,8 @@
     setTimeout(tryAddViewWatoMenu, 800);
     // Auto-check foreign activation: only on mode=changelog.
     if (!targetMode || targetMode === 'changelog') setTimeout(tryAutoCheckForeignActivation, 500);
+    // Sites status filters: only on mode=sites, self-stops if not applicable.
+    if (!targetMode || targetMode === 'sites') setTimeout(tryAddSitesFilterBar, 500);
   }
 
   if (document.readyState === 'complete') {
@@ -1411,6 +1516,10 @@
     if (tDoc && tDoc.body && !tDoc.body.dataset.cmkAccToggle) {
       attemptsAccToggle = 0;
       setTimeout(tryAddAccordionToggleButtons, 300);
+    }
+    if (mode === 'sites' && iDoc.body && !iDoc.body.dataset.cmkSitesFilter) {
+      attemptsSitesFilter = 0;
+      setTimeout(tryAddSitesFilterBar, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
