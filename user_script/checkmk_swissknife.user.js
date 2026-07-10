@@ -2,7 +2,7 @@
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
 // @version      2.16.0
-// @checkmk      2.3.x
+// @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
 // @homepageURL  https://github.com/luigidacunto/checkmk-swissknife
