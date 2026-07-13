@@ -1,8 +1,9 @@
-
-### My Personal test file for Dev only ###
 /.*/
 /*.bat
 /*.ps1
+/*.sh
 /*.md
+
+!/.gitlab
 !README.md
 !CHANGELOG.md
