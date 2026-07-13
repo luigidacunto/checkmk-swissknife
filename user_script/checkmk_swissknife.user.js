@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.16.0
+// @version      2.16.1
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -729,9 +729,9 @@
 
   function addRulesetFilterToggle(doc) {
     if (doc.body.dataset.cmkFilterToggle === '1') return;
-    doc.body.dataset.cmkFilterToggle = '1';
 
-    const RELEVANT_SEL = 'tr.cmk-sk-rule-match, tr.cmk-sk-rule-nomatch, tr.cmk-sk-ineffective';
+    // Le righe "no match" NON sono rilevanti: il filtro serve proprio a nasconderle
+    const RELEVANT_SEL = 'tr.cmk-sk-rule-match, tr.cmk-sk-ineffective';
 
     // No highlighted rows = no active search, toggle is useless
     const relevantCount = doc.querySelectorAll(RELEVANT_SEL).length;
@@ -749,6 +749,10 @@
     const irrelevantFolders = doc.querySelectorAll('div.foldable_wrapper.cmk-sk-irrelevant-folder').length;
 
     if (!irrelevantRows && !irrelevantFolders) return;
+
+    // Guard settato solo qui: se la tabella non era ancora renderizzata
+    // il prossimo tentativo deve poter riprovare
+    doc.body.dataset.cmkFilterToggle = '1';
 
     injectStyles(doc, 'cmk-sk-filter-toggle-styles', `
       #cmk-sk-filter-bar {

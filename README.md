@@ -70,9 +70,9 @@ Applies to: `mode=edit_ruleset` with host/service context.
 ---
 
 ### Ruleset Filter Toggle
-After match/ineffective highlighting runs, a **"Relevant only"** button appears above the rule list. Clicking it hides all non-highlighted rows and empty folders, leaving only the rules that matter for the current context.
+After match/ineffective highlighting runs, a **"Relevant only"** button appears above the rule list. Clicking it hides all `✗ no match` rows, non-highlighted rows and empty folders, leaving only the matching (or ineffective) rules for the current context.
 
-Applies to: `mode=edit_ruleset` (when at least one highlighted row exists).
+Applies to: `mode=edit_ruleset` (when at least one `✓ match` or ineffective row exists).
 
 ---
 
