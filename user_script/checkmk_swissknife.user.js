@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.16.1
+// @version      2.16.2
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -821,7 +821,15 @@
   // In view.py pages (monitoring views), adds a small button next to each
   // hostname in the Host column to directly open the host's Service Discovery
   // page in a new tab.
+  //
+  // The hostname shown in the Host column link is truncated to
+  // HOST_DISPLAY_MAX_LEN characters (with a title tooltip holding the full
+  // name) when it exceeds the threshold. The copy buttons (Extra column)
+  // always use `hostname`, taken from the `host` href parameter, never the
+  // truncated text.
   // =========================================================================
+
+  const HOST_DISPLAY_MAX_LEN = 32; // ~15 char typical hostname + ".ad.aruba.it" + margin
 
   function addInventoryButtons(doc) {
     if (doc.body.dataset.cmkInventoryBtns === '1') return;
@@ -931,6 +939,14 @@
             const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
             if (h) {
               const hostname = h, shortname = h.split('.')[0];
+
+              // Truncate the displayed name (copy buttons below always use the full `hostname`/`shortname`)
+              const displayName = a.textContent.trim();
+              if (displayName.length > HOST_DISPLAY_MAX_LEN) {
+                a.title = displayName;
+                a.textContent = displayName.slice(0, HOST_DISPLAY_MAX_LEN - 1) + '…';
+              }
+
               const group = doc.createElement('span');
               group.className = 'cmk-sk-btn-group';
 

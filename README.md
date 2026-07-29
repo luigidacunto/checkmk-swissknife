@@ -88,6 +88,8 @@ Adds a dedicated **Extra** column before the Host column in all monitoring view 
 
 The IP address is read from the tooltip Checkmk places on the hostname cell. Clicking any clipboard button briefly turns it green to confirm the copy.
 
+Hostnames longer than 32 characters are truncated with an ellipsis in the Host column; hover to see the full name in a tooltip. The copy buttons above always copy the full, untruncated hostname regardless of what's displayed.
+
 Applies to: `view.py` host and service views.
 
 ---
