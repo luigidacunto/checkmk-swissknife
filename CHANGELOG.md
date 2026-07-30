@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2026-07-30
+
+### Added
+- "Extra column: ON/OFF" button in the monitoring view menu bar (next to "Configure in WATO", when present) to show or hide the Extra column (Service Discovery / copy hostname / copy IP buttons). The choice is saved in the browser and persists across page reloads and views.
+
 ## [2.17.0] - 2026-07-30
 
 ### Added

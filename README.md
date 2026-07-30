@@ -30,6 +30,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Collapse All / Expand All** | Adds two buttons to the menu bar to collapse or expand all accordion sections at once | `addAccordionToggleButtons` |
 | **Site Status Filters** | Adds Disabled / Online / Timeout / Not running toggle buttons below "Add connection" to quickly filter the site connections list | `addSitesFilterBar` |
 | **ListChoice Filter Bar** | Adds a search box, a "N / total selected" counter and a "Selected only" toggle above large checkbox lists (e.g. "Deploy custom files with agent") | `addListChoiceFilter` |
+| **Extra Column Toggle** | Adds an ON/OFF button to the menu bar to show/hide the Extra column; the choice is remembered across reloads | `addExtraColumnToggle` |
 
 ---
 
@@ -92,6 +93,8 @@ The IP address is read from the tooltip Checkmk places on the hostname cell. Cli
 Hostnames longer than 32 characters are truncated with an ellipsis in the Host column; hover to see the full name in a tooltip. The copy buttons above always copy the full, untruncated hostname regardless of what's displayed.
 
 Applies to: `view.py` host and service views.
+
+An **"Extra column: ON/OFF"** button in the menu bar (next to "Configure in WATO", when present) lets you hide or show this column. The choice is saved in the browser's local storage, so it stays the same across reloads and on every monitoring view.
 
 ---
 

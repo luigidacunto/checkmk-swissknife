@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.17.0
+// @version      2.18.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -877,6 +877,7 @@
         opacity: 1;
       }
       .cmk-sk-btn-group svg { display: block; }
+      body.cmk-sk-extra-hidden .cmk-sk-extra-th, body.cmk-sk-extra-hidden .cmk-sk-extra-td { display: none; }
     `);
 
     const CLIP_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
@@ -920,8 +921,11 @@
         headerRow.insertBefore(th, [...headerRow.children][hostColIdx] || null);
       }
 
-      // Aggiorna colspan dei groupheader
-      table.querySelectorAll('tr.groupheader td[colspan]').forEach(td => { td.colSpan++; });
+      // Capture the original groupheader colspan BEFORE adding the Extra column,
+      // so the visibility toggle can add/remove exactly 1 without drifting.
+      table.querySelectorAll('tr.groupheader td[colspan]').forEach(td => {
+        if (td.dataset.cmkSkBaseColspan === undefined) td.dataset.cmkSkBaseColspan = td.colSpan;
+      });
 
       // Processa righe dati
       table.querySelectorAll('tr.data').forEach(tr => {
@@ -970,7 +974,86 @@
       });
     });
 
-    if (found) doc.body.dataset.cmkInventoryBtns = '1';
+    if (found) {
+      doc.body.dataset.cmkInventoryBtns = '1';
+      applyExtraColVisibility(doc);
+    }
+  }
+
+
+  // =========================================================================
+  // FEATURE: Extra Column Visibility Toggle
+  //
+  // Adds an Enable/Disable button to the view.py menu bar (next to the
+  // "Configure in WATO" selector, when present) to show/hide the Extra
+  // column added by addInventoryButtons. The choice is persisted in
+  // localStorage (shared across tabs/pages, same origin) so it survives
+  // page reloads and applies to every monitoring view.
+  // =========================================================================
+
+  const EXTRA_COL_STORAGE_KEY = 'cmkSkExtraColVisible';
+
+  function isExtraColVisible() {
+    return localStorage.getItem(EXTRA_COL_STORAGE_KEY) !== '0';
+  }
+
+  // Applies the persisted visibility preference: toggles the hide CSS class
+  // and resyncs groupheader colspan (base + 1 when visible, base when hidden).
+  function applyExtraColVisibility(doc) {
+    const visible = isExtraColVisible();
+    doc.body.classList.toggle('cmk-sk-extra-hidden', !visible);
+    doc.querySelectorAll('tr.groupheader td[data-cmk-sk-base-colspan]').forEach(td => {
+      td.colSpan = Number(td.dataset.cmkSkBaseColspan) + (visible ? 1 : 0);
+    });
+  }
+
+  function addExtraColumnToggle(doc) {
+    if (doc.body.dataset.cmkExtraColToggle === '1') return;
+    if (!doc.querySelector('.cmk-sk-extra-th')) return;
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return;
+    doc.body.dataset.cmkExtraColToggle = '1';
+
+    injectStyles(doc, 'cmk-sk-extra-toggle-style', `
+      .cmk-sk-extra-toggle-btn {
+        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
+        cursor: pointer; vertical-align: middle;
+        background: #1a73e8; color: #fff; border: 1px solid #1a73e8;
+      }
+      .cmk-sk-extra-toggle-btn.off { background: #555; color: #ccc; border-color: #777; }
+    `);
+
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+
+    function refresh() {
+      const visible = isExtraColVisible();
+      btn.textContent = visible ? 'Extra column: ON' : 'Extra column: OFF';
+      btn.className = 'cmk-sk-extra-toggle-btn' + (visible ? '' : ' off');
+    }
+
+    btn.addEventListener('click', () => {
+      localStorage.setItem(EXTRA_COL_STORAGE_KEY, isExtraColVisible() ? '0' : '1');
+      applyExtraColVisibility(doc);
+      refresh();
+    });
+
+    refresh();
+    menues.appendChild(btn);
+  }
+
+  function tryAddExtraColumnToggle() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsExtraColToggle < MAX_ATTEMPTS) setTimeout(tryAddExtraColumnToggle, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (!doc.querySelector('.cmk-sk-extra-th')) {
+      if (++attemptsExtraColToggle < MAX_ATTEMPTS) setTimeout(tryAddExtraColumnToggle, POLL_INTERVAL_MS);
+      return;
+    }
+    addExtraColumnToggle(doc);
   }
 
 
@@ -1276,6 +1359,7 @@
   let attemptsAccToggle = 0;
   let attemptsSitesFilter = 0;
   let attemptsListchoice = 0;
+  let attemptsExtraColToggle = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1576,6 +1660,7 @@
     attemptsAccToggle = 0;
     attemptsSitesFilter = 0;
     attemptsListchoice = 0;
+    attemptsExtraColToggle = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1600,6 +1685,8 @@
     if (!targetMode || targetMode === 'sites') setTimeout(tryAddSitesFilterBar, 500);
     // ListChoice filter bar: on any page with a large table.listchoice, self-stops if not applicable.
     setTimeout(tryAddListChoiceFilter, 600);
+    // Extra column toggle: on view.py once the Extra column exists, self-stops if not applicable.
+    setTimeout(tryAddExtraColumnToggle, 700);
   }
 
   if (document.readyState === 'complete') {
@@ -1659,6 +1746,10 @@
     if (tDoc && tDoc.body && !tDoc.body.dataset.cmkListchoiceFilter) {
       attemptsListchoice = 0;
       setTimeout(tryAddListChoiceFilter, 300);
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkExtraColToggle) {
+      attemptsExtraColToggle = 0;
+      setTimeout(tryAddExtraColumnToggle, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
