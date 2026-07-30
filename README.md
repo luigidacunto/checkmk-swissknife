@@ -29,6 +29,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Auto-check Foreign Changes** | Automatically ticks the "Activate foreign changes" checkbox on the pending changes page | `tryAutoCheckForeignActivation` |
 | **Collapse All / Expand All** | Adds two buttons to the menu bar to collapse or expand all accordion sections at once | `addAccordionToggleButtons` |
 | **Site Status Filters** | Adds Disabled / Online / Timeout / Not running toggle buttons below "Add connection" to quickly filter the site connections list | `addSitesFilterBar` |
+| **ListChoice Filter Bar** | Adds a search box, a "N / total selected" counter and a "Selected only" toggle above large checkbox lists (e.g. "Deploy custom files with agent") | `addListChoiceFilter` |
 
 ---
 
@@ -147,6 +148,13 @@ Adds a row of quick filter buttons right below the **Add connection** shortcut o
 Only one filter can be active at a time — clicking the active button turns it off and shows all sites again. The active filter is highlighted with a solid background so it's always clear which view you're in.
 
 Applies to: `wato.py?mode=sites` (with or without sidebar).
+
+---
+
+### ListChoice Filter Bar
+Checkmk's native checkbox-list widget (used by rules like "Deploy custom files with agent") renders one row per item with no grouping or pagination — some lists have 100+ entries even though a rule typically only needs 3-4 checked. Adds a search box, a live "N / total selected" counter, and a "Selected only" toggle above any such list with 15+ items. Purely visual — checkbox state and the Save button are unaffected.
+
+Applies to: any WATO rule editor page containing a large checkbox-list value (with or without sidebar).
 
 ## How it works
 

@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.16.2
+// @version      2.17.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1275,6 +1275,7 @@
   let attemptsChangelog = 0;
   let attemptsAccToggle = 0;
   let attemptsSitesFilter = 0;
+  let attemptsListchoice = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1449,6 +1450,117 @@
     addAccordionToggleButtons(doc);
   }
 
+  // =========================================================================
+  // FEATURE: ListChoice Filter Bar
+  //
+  // Checkmk's native ListChoice widget (table.listchoice) renders one row
+  // per item with no grouping or pagination. On rules like "Deploy custom
+  // files with agent" this means 100+ checkboxes to scroll through to find
+  // the 3-4 that actually need to be checked. Adds a search box, a live
+  // selected-count, and a "Selected only" toggle above each such table.
+  // Pure visibility filter (hides <tr> via CSS class): never touches
+  // checked state or name attributes, so native form submission on Save
+  // is completely unaffected.
+  // =========================================================================
+
+  const LISTCHOICE_MIN_ITEMS = 15; // below this, scrolling is not a real problem
+
+  function addListChoiceFilter(doc) {
+    if (doc.body.dataset.cmkListchoiceFilter === '1') return;
+
+    const tables = [...doc.querySelectorAll('table.listchoice')]
+      .filter(t => t.querySelectorAll('input[type="checkbox"]').length >= LISTCHOICE_MIN_ITEMS);
+    if (!tables.length) return;
+
+    doc.body.dataset.cmkListchoiceFilter = '1';
+
+    injectStyles(doc, 'cmk-sk-listchoice-filter-styles', `
+      .cmk-sk-lc-bar {
+        display: flex; align-items: center; gap: 8px;
+        padding: 5px 8px; margin-bottom: 4px;
+        background: rgba(0,0,0,0.25); border: 1px solid #3a3a3a; border-radius: 4px;
+        font-size: 11px; font-family: monospace; color: #999;
+      }
+      .cmk-sk-lc-search {
+        flex: 0 0 220px; padding: 3px 6px; font-size: 11px; font-family: monospace;
+        border-radius: 3px; border: 1px solid #555; background: #1c1c1c; color: #ddd;
+      }
+      .cmk-sk-lc-toggle {
+        cursor: pointer; padding: 3px 10px; border-radius: 3px; border: 1px solid #555;
+        background: #2a2a2a; color: #bbb; font-size: 11px; font-family: monospace;
+        font-weight: bold; letter-spacing: 0.03em;
+      }
+      .cmk-sk-lc-toggle:hover { background: #383838; }
+      .cmk-sk-lc-toggle.active { background: #1c3320; border-color: #4caf50; color: #4caf50; }
+      .cmk-sk-lc-hidden { display: none !important; }
+    `);
+
+    tables.forEach(table => {
+      const rows = [...table.querySelectorAll('tr')].map(tr => {
+        const cb = tr.querySelector('input[type="checkbox"]');
+        const label = tr.querySelector('label');
+        return cb && label ? { tr, cb, text: label.textContent.trim().toLowerCase() } : null;
+      }).filter(Boolean);
+      if (!rows.length) return;
+
+      const bar = doc.createElement('div');
+      bar.className = 'cmk-sk-lc-bar';
+
+      const search = doc.createElement('input');
+      search.type = 'text';
+      search.className = 'cmk-sk-lc-search';
+      search.placeholder = 'Filter…';
+
+      const toggle = doc.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cmk-sk-lc-toggle';
+      toggle.textContent = 'Selected only';
+
+      const count = doc.createElement('span');
+
+      let selectedOnly = false;
+
+      function updateCount() {
+        const selected = rows.filter(r => r.cb.checked).length;
+        count.textContent = `${selected} / ${rows.length} selected`;
+      }
+
+      function applyFilter() {
+        const q = search.value.trim().toLowerCase();
+        rows.forEach(r => {
+          const matchesSearch = !q || r.text.includes(q);
+          const matchesToggle = !selectedOnly || r.cb.checked;
+          r.tr.classList.toggle('cmk-sk-lc-hidden', !(matchesSearch && matchesToggle));
+        });
+      }
+
+      search.addEventListener('input', applyFilter);
+      toggle.addEventListener('click', () => {
+        selectedOnly = !selectedOnly;
+        toggle.classList.toggle('active', selectedOnly);
+        toggle.textContent = selectedOnly ? 'Show all' : 'Selected only';
+        applyFilter();
+      });
+      rows.forEach(r => r.cb.addEventListener('change', updateCount));
+
+      bar.appendChild(search);
+      bar.appendChild(toggle);
+      bar.appendChild(count);
+      table.before(bar);
+
+      updateCount();
+    });
+  }
+
+  function tryAddListChoiceFilter() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsListchoice < MAX_ATTEMPTS) setTimeout(tryAddListChoiceFilter, POLL_INTERVAL_MS);
+      return;
+    }
+    addListChoiceFilter(doc);
+  }
+
   function init() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
     const mode = getPageMode(iDoc);
@@ -1463,6 +1575,7 @@
     attemptsChangelog = 0;
     attemptsAccToggle = 0;
     attemptsSitesFilter = 0;
+    attemptsListchoice = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1485,6 +1598,8 @@
     if (!targetMode || targetMode === 'changelog') setTimeout(tryAutoCheckForeignActivation, 500);
     // Sites status filters: only on mode=sites, self-stops if not applicable.
     if (!targetMode || targetMode === 'sites') setTimeout(tryAddSitesFilterBar, 500);
+    // ListChoice filter bar: on any page with a large table.listchoice, self-stops if not applicable.
+    setTimeout(tryAddListChoiceFilter, 600);
   }
 
   if (document.readyState === 'complete') {
@@ -1540,6 +1655,10 @@
     if (mode === 'sites' && iDoc.body && !iDoc.body.dataset.cmkSitesFilter) {
       attemptsSitesFilter = 0;
       setTimeout(tryAddSitesFilterBar, 300);
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkListchoiceFilter) {
+      attemptsListchoice = 0;
+      setTimeout(tryAddListChoiceFilter, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 

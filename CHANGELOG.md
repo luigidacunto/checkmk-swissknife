@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.17.0] - 2026-07-30
+
+### Added
+- Search box, live "N / total selected" counter and a "Selected only" toggle above large checkbox lists (Checkmk's native ListChoice widget, e.g. "Deploy custom files with agent"), making it easy to find the few relevant checkboxes among hundreds without scrolling. Purely visual filtering — checkbox state and form submission are unaffected.
+
 ## [2.16.2] - 2026-07-29
 
 ### Changed
