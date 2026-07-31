@@ -32,6 +32,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **ListChoice Filter Bar** | Adds a search box, a "N / total selected" counter and a "Selected only" toggle above large checkbox lists (e.g. "Deploy custom files with agent") | `addListChoiceFilter` |
 | **Extra Column Toggle** | Adds an ON/OFF button to the menu bar to show/hide the Extra column; the choice is remembered across reloads | `addExtraColumnToggle` |
 | **Copy Host List (JSON)** | Adds a button to the menu bar that copies hostname, alias, IPv4 address and monitored site for every host in the list to the clipboard as JSON | `addHostListCopyButton` |
+| **Service Export to Markdown** | On any view.py services table (Host + Display name/Service columns), adds a button that exports a Markdown table with whichever of Site/Host/IP/Display name/Summary/Details are present, to the clipboard and as a downloaded `.md` file | `addServiceExportButton` |
 
 ---
 
@@ -166,6 +167,13 @@ Applies to: any WATO rule editor page containing a large checkbox-list value (wi
 Adds a **"Copy host list (JSON)"** button to the menu bar on any WATO host-list page — plain folder browsing or host search results. Clicking it copies hostname, alias, IPv4 address and monitored site for every host currently listed to the clipboard as a JSON array, ready to paste into a script, ticket, or spreadsheet.
 
 Applies to: `wato.py?mode=folder` (folder browsing and host search results, with or without sidebar).
+
+---
+
+### Service Export to Markdown
+On any monitoring view showing a services table — detected structurally by a **Host** column plus a **Display name**/**Service** column, not tied to one specific view — adds an **"Export to Markdown (.md)"** button to the menu bar. It turns the visible table into a standard Markdown table, one row per service, copies it to the clipboard and downloads it as a `.md` file in one click. Columns are Site, Host, IP, Display name, Summary, Details in that order, but only the ones actually present on the current view are included — a view without a Details column simply won't have one in the export. Rows are read at click time, so the export always matches what's currently on screen.
+
+Applies to: any `view.py` page with a services table (with or without sidebar).
 
 ## How it works
 

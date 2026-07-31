@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.19.0
+// @version      2.20.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1245,6 +1245,188 @@
 
 
   // =========================================================================
+  // FEATURE: Export service tables to Markdown
+  //
+  // On any view.py page showing a services table (identified structurally by
+  // a "Display name"/"Service" column — not tied to one specific view_name),
+  // adds a menu bar button that turns the visible table into a Markdown
+  // table and both copies it to the clipboard and triggers a .md file
+  // download. Only the columns actually present on that view are exported,
+  // always in this order: Site, Host, IP, Display name, Summary, Details.
+  // Host/IP need a "Host" column with a per-row host link+tooltip; on
+  // single-host views without one, Host falls back to the page's own
+  // `host=` URL parameter and IP is left out. Rows are read live at click
+  // time (views auto-refresh), so the export always matches what's on
+  // screen.
+  // =========================================================================
+
+  // Converts a table cell to plain text, turning <br> into newlines
+  // so multi-line Details/Summary content survives outside the DOM.
+  function cellToText(cell) {
+    if (!cell) return '';
+    const clone = cell.cloneNode(true);
+    clone.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+    return clone.textContent.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // A pipe table row is one physical line, so a cell can't hold a literal
+  // newline: line breaks become <br> (rendered as a line break, collapsed
+  // to one line in raw text). Pipe characters are escaped so a "|" in
+  // Details/Summary can't be mistaken for a column separator.
+  function mdCell(text) {
+    return String(text || '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  }
+
+  // Maps this table's actual header labels to the columns we know how to
+  // export. Returns null if there's no Display name/Service column (not a
+  // services table). A Host column is common but not required: single-host
+  // views (e.g. "Services of Host X") omit it because it's implied by the
+  // page's own `host=` URL parameter instead.
+  function findServiceColumns(headerCells) {
+    const dispIdx = headerCells.indexOf('Display name') !== -1
+      ? headerCells.indexOf('Display name')
+      : headerCells.indexOf('Service');
+    if (dispIdx === -1) return null;
+    return {
+      siteIdx: headerCells.indexOf('Site'),
+      hostIdx: headerCells.indexOf('Host'),
+      dispIdx,
+      summaryIdx: headerCells.indexOf('Summary'),
+      detailsIdx: headerCells.indexOf('Details'),
+    };
+  }
+
+  // First table.data on the page with a Display name/Service column.
+  function findServiceTable(doc) {
+    return [...doc.querySelectorAll('table.data')].find(t => {
+      const headerRow = [...t.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      if (!headerRow) return false;
+      const headerCells = [...headerRow.querySelectorAll('th')].map(th => th.textContent.trim());
+      return !!findServiceColumns(headerCells);
+    });
+  }
+
+  function buildServiceExportMarkdown(doc, table) {
+    const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+    if (!headerRow) return '';
+    const headerCells = [...headerRow.querySelectorAll('th')].map(th => th.textContent.trim());
+    const idx = findServiceColumns(headerCells);
+    if (!idx) return '';
+
+    const hasHostCol = idx.hostIdx !== -1;
+    const urlHost = new URLSearchParams(doc.location.search).get('host') || '';
+
+    const cols = [];
+    if (idx.siteIdx !== -1) cols.push({ key: 'site', label: 'Site' });
+    if (hasHostCol || urlHost) cols.push({ key: 'hostname', label: 'Host' });
+    if (hasHostCol) cols.push({ key: 'ip', label: 'IP' }); // IP only comes from the per-row host cell tooltip
+    cols.push({ key: 'displayName', label: 'Display name' });
+    if (idx.summaryIdx !== -1) cols.push({ key: 'summary', label: 'Summary' });
+    if (idx.detailsIdx !== -1) cols.push({ key: 'details', label: 'Details' });
+
+    const rows = [...table.querySelectorAll('tr.data')].map(tr => {
+      const cells = [...tr.children];
+      let hostname = urlHost, ip = '';
+      if (hasHostCol) {
+        const hostCell = cells[idx.hostIdx];
+        const link = hostCell?.querySelector('a[href*="host="]');
+        hostname = link
+          ? new URLSearchParams((link.getAttribute('href') || '').split('?')[1] || '').get('host')
+          : cellToText(hostCell);
+        ip = hostCell?.querySelector('span[title]')?.title || '';
+      }
+      return {
+        site: idx.siteIdx !== -1 ? cellToText(cells[idx.siteIdx]) : '',
+        hostname: hostname || '',
+        ip,
+        displayName: cellToText(cells[idx.dispIdx]),
+        summary: idx.summaryIdx !== -1 ? cellToText(cells[idx.summaryIdx]) : '',
+        details: idx.detailsIdx !== -1 ? cellToText(cells[idx.detailsIdx]) : '',
+      };
+    });
+
+    const lines = [
+      `# Service export — ${new Date().toISOString()}`,
+      '',
+      '| ' + cols.map(c => c.label).join(' | ') + ' |',
+      '|' + cols.map(() => '---').join('|') + '|',
+    ];
+    rows.forEach(r => {
+      lines.push('| ' + cols.map(c => mdCell(r[c.key])).join(' | ') + ' |');
+    });
+    return lines.join('\n');
+  }
+
+  function downloadMarkdown(doc, filename, text) {
+    const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = doc.createElement('a');
+    a.href = url;
+    a.download = filename;
+    doc.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function addServiceExportButton(doc) {
+    if (doc.body.dataset.cmkSvcExport === '1') return;
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return;
+    if (!findServiceTable(doc)) return;
+
+    doc.body.dataset.cmkSvcExport = '1';
+
+    injectStyles(doc, 'cmk-sk-svc-export-style', `
+      .cmk-sk-svc-export-btn {
+        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
+        cursor: pointer; background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
+      }
+      .cmk-sk-svc-export-btn:hover { background: rgba(90,180,214,0.15); }
+      .cmk-sk-svc-export-btn.copied { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.15); }
+    `);
+
+    const btn = doc.createElement('button');
+    btn.className = 'cmk-sk-svc-export-btn';
+    btn.type = 'button';
+    btn.textContent = 'Export to Markdown (.md)';
+    btn.title = 'Copy to clipboard and download as .md: Site, Host, IP, Display name, Summary, Details (whichever are present on this view)';
+
+    btn.addEventListener('click', () => {
+      const table = findServiceTable(doc);
+      const md = table ? buildServiceExportMarkdown(doc, table) : '';
+      const rowCount = table ? table.querySelectorAll('tr.data').length : 0;
+      if (!md) return;
+
+      downloadMarkdown(doc, `service_export_${Date.now()}.md`, md);
+      navigator.clipboard.writeText(md).then(() => {
+        const orig = btn.textContent;
+        btn.classList.add('copied');
+        btn.textContent = `Copied + downloaded (${rowCount})`;
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1800);
+      });
+    });
+
+    menues.appendChild(btn);
+  }
+
+  function tryAddServiceExportButton() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsSvcExport < MAX_ATTEMPTS) setTimeout(tryAddServiceExportButton, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (!findServiceTable(doc)) {
+      if (++attemptsSvcExport < MAX_ATTEMPTS) setTimeout(tryAddServiceExportButton, POLL_INTERVAL_MS);
+      return;
+    }
+    addServiceExportButton(doc);
+  }
+
+
+  // =========================================================================
   // FEATURE: Quick status filters on Distributed Monitoring (mode=sites)
   //
   // Adds a row below the "Add connection" shortcut with 4 toggle buttons that
@@ -1361,6 +1543,7 @@
   let attemptsListchoice = 0;
   let attemptsExtraColToggle = 0;
   let attemptsHostListCopy = 0;
+  let attemptsSvcExport = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1747,6 +1930,7 @@
     attemptsListchoice = 0;
     attemptsExtraColToggle = 0;
     attemptsHostListCopy = 0;
+    attemptsSvcExport = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1767,6 +1951,8 @@
     setTimeout(tryAddHostListCopyButton, 500);
     // WATO menu: on view.py with host rows, self-stops if not applicable.
     setTimeout(tryAddViewWatoMenu, 800);
+    // Service export to Markdown: any view.py page with a services table, self-stops if not applicable.
+    setTimeout(tryAddServiceExportButton, 500);
     // Auto-check foreign activation: only on mode=changelog.
     if (!targetMode || targetMode === 'changelog') setTimeout(tryAutoCheckForeignActivation, 500);
     // Sites status filters: only on mode=sites, self-stops if not applicable.
@@ -1824,6 +2010,14 @@
         if (/\/view\.py/.test(tDoc.location.pathname) && tDoc.querySelector('tr.data td.nobr a[href*="host="]')) {
           attemptsViewWato = 0;
           setTimeout(tryAddViewWatoMenu, 300);
+        }
+      } catch (e) {}
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkSvcExport) {
+      try {
+        if (/\/view\.py/.test(tDoc.location.pathname) && findServiceTable(tDoc)) {
+          attemptsSvcExport = 0;
+          setTimeout(tryAddServiceExportButton, 300);
         }
       } catch (e) {}
     }

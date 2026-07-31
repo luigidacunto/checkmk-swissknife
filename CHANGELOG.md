@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.0] - 2026-07-31
+
+### Added
+- "Export to Markdown (.md)" button in the menu bar, on any monitoring view showing a services table (detected by its Host + Display name/Service columns, not tied to one specific view). Exports a Markdown table with whichever of Site, Host, IP, Display name, Summary, Details are present on that view, copies it to the clipboard and downloads it as a `.md` file in one click.
+
 ## [2.19.0] - 2026-07-31
 
 ### Added
