@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2026-07-31
+
+### Added
+- "Copy host list (JSON)" button in the WATO menu bar on any host-list page (folder browsing or host search results). Copies hostname, alias, IPv4 address and monitored site for every visible host to the clipboard as JSON.
+
 ## [2.18.0] - 2026-07-30
 
 ### Added

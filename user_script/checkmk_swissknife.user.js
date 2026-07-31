@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.18.0
+// @version      2.19.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1360,6 +1360,7 @@
   let attemptsSitesFilter = 0;
   let attemptsListchoice = 0;
   let attemptsExtraColToggle = 0;
+  let attemptsHostListCopy = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1466,6 +1467,90 @@
     try { if (!/\/wato\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
     if (getPageMode(doc) !== 'folder') return;
     addWatoFolderMonitorButtons(doc);
+  }
+
+  // =========================================================================
+  // FEATURE: Copy host list as JSON
+  //
+  // Adds a button to the WATO menu bar on any host-list table (plain folder
+  // browsing or host search results — both render mode=folder with the same
+  // table.data columns) that copies hostname/alias/IPv4/monitored site for
+  // every visible row to the clipboard as JSON.
+  // =========================================================================
+
+  function addHostListCopyButton(doc) {
+    if (doc.body.dataset.cmkHostListCopy === '1') return;
+    const menues = doc.querySelector('td.menues');
+    if (!menues) return;
+
+    const tables = [...doc.querySelectorAll('table.data')].filter(t =>
+      [...t.querySelectorAll('tr th')].some(th => th.textContent.trim() === 'Host name'));
+    if (!tables.length) return;
+
+    doc.body.dataset.cmkHostListCopy = '1';
+
+    injectStyles(doc, 'cmk-sk-hostlist-copy-style', `
+      .cmk-sk-hostlist-copy-btn {
+        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
+        cursor: pointer; background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
+      }
+      .cmk-sk-hostlist-copy-btn:hover { background: rgba(90,180,214,0.15); }
+      .cmk-sk-hostlist-copy-btn.copied { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.15); }
+    `);
+
+    const btn = doc.createElement('button');
+    btn.className = 'cmk-sk-hostlist-copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy host list (JSON)';
+    btn.title = 'Copy hostname, alias, IPv4 address and monitored site as JSON';
+
+    btn.addEventListener('click', () => {
+      const hosts = [];
+      tables.forEach(table => {
+        const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+        if (!headerRow) return;
+        const headerCells = [...headerRow.querySelectorAll('th')].map(th => th.textContent.trim());
+        const hostIdx = headerCells.indexOf('Host name');
+        const aliasIdx = headerCells.indexOf('Alias');
+        const ipIdx = headerCells.indexOf('IPv4 address');
+        const siteIdx = headerCells.indexOf('Monitored on site');
+        if (hostIdx === -1) return;
+
+        table.querySelectorAll('tr.data').forEach(tr => {
+          const cells = [...tr.children];
+          const link = cells[hostIdx] && cells[hostIdx].querySelector('a[href*="mode=edit_host"]');
+          if (!link) return;
+          const hostname = new URLSearchParams((link.getAttribute('href') || '').split('?')[1] || '').get('host');
+          if (!hostname) return;
+          hosts.push({
+            hostname,
+            alias: aliasIdx !== -1 ? cells[aliasIdx].textContent.trim() : '',
+            ipv4: ipIdx !== -1 ? cells[ipIdx].textContent.trim() : '',
+            site: siteIdx !== -1 ? cells[siteIdx].textContent.trim() : '',
+          });
+        });
+      });
+
+      navigator.clipboard.writeText(JSON.stringify(hosts, null, 2)).then(() => {
+        const orig = btn.textContent;
+        btn.classList.add('copied');
+        btn.textContent = `Copied ${hosts.length} hosts`;
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1500);
+      });
+    });
+
+    menues.appendChild(btn);
+  }
+
+  function tryAddHostListCopyButton() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsHostListCopy < MAX_ATTEMPTS) setTimeout(tryAddHostListCopyButton, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/wato\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (getPageMode(doc) !== 'folder') return;
+    addHostListCopyButton(doc);
   }
 
   // =========================================================================
@@ -1661,6 +1746,7 @@
     attemptsSitesFilter = 0;
     attemptsListchoice = 0;
     attemptsExtraColToggle = 0;
+    attemptsHostListCopy = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1677,6 +1763,8 @@
     setTimeout(tryAddInventoryButtons, 500);
     // Monitor button: on wato.py mode=folder, self-stops if not applicable.
     setTimeout(tryAddWatoFolderMonitorButtons, 500);
+    // Copy host list button: on wato.py mode=folder, self-stops if not applicable.
+    setTimeout(tryAddHostListCopyButton, 500);
     // WATO menu: on view.py with host rows, self-stops if not applicable.
     setTimeout(tryAddViewWatoMenu, 800);
     // Auto-check foreign activation: only on mode=changelog.
@@ -1725,6 +1813,10 @@
     if (mode === 'folder' && iDoc.body && !iDoc.body.dataset.cmkFolderMonBtns) {
       attemptsFolderMon = 0;
       setTimeout(tryAddWatoFolderMonitorButtons, 300);
+    }
+    if (mode === 'folder' && iDoc.body && !iDoc.body.dataset.cmkHostListCopy) {
+      attemptsHostListCopy = 0;
+      setTimeout(tryAddHostListCopyButton, 300);
     }
     const tDoc = getTargetDoc();
     if (tDoc && tDoc.body && !tDoc.body.dataset.cmkViewWatoMenu) {

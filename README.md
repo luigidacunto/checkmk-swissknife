@@ -31,6 +31,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Site Status Filters** | Adds Disabled / Online / Timeout / Not running toggle buttons below "Add connection" to quickly filter the site connections list | `addSitesFilterBar` |
 | **ListChoice Filter Bar** | Adds a search box, a "N / total selected" counter and a "Selected only" toggle above large checkbox lists (e.g. "Deploy custom files with agent") | `addListChoiceFilter` |
 | **Extra Column Toggle** | Adds an ON/OFF button to the menu bar to show/hide the Extra column; the choice is remembered across reloads | `addExtraColumnToggle` |
+| **Copy Host List (JSON)** | Adds a button to the menu bar that copies hostname, alias, IPv4 address and monitored site for every host in the list to the clipboard as JSON | `addHostListCopyButton` |
 
 ---
 
@@ -158,6 +159,13 @@ Applies to: `wato.py?mode=sites` (with or without sidebar).
 Checkmk's native checkbox-list widget (used by rules like "Deploy custom files with agent") renders one row per item with no grouping or pagination — some lists have 100+ entries even though a rule typically only needs 3-4 checked. Adds a search box, a live "N / total selected" counter, and a "Selected only" toggle above any such list with 15+ items. Purely visual — checkbox state and the Save button are unaffected.
 
 Applies to: any WATO rule editor page containing a large checkbox-list value (with or without sidebar).
+
+---
+
+### Copy Host List (JSON)
+Adds a **"Copy host list (JSON)"** button to the menu bar on any WATO host-list page — plain folder browsing or host search results. Clicking it copies hostname, alias, IPv4 address and monitored site for every host currently listed to the clipboard as a JSON array, ready to paste into a script, ticket, or spreadsheet.
+
+Applies to: `wato.py?mode=folder` (folder browsing and host search results, with or without sidebar).
 
 ## How it works
 
