@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.2] - 2026-08-20
+
+### Fixed
+- "Configure in WATO" menu still didn't appear on views without a dedicated Host column after the 2.20.1 fix: two activation checks (the initial polling loop and the SPA-navigation re-check) still required the classic `td.nobr` Host column before even attempting to build the menu. Both now also accept the `host=` fallback, so the menu actually gets built on views like "Service search".
+
 ## [2.20.1] - 2026-08-20
 
 ### Fixed

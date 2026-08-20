@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.20.1
+// @version      2.20.2
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1639,8 +1639,9 @@
       return;
     }
     try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
-    // Wait until the data table is present
-    if (!doc.querySelector('tr.data td.nobr a[href*="host="]')) {
+    // Wait until the data table is present (classic Host column, or the
+    // host= fallback used by views without one, e.g. searchsvc)
+    if (!doc.querySelector('tr.data td.nobr a[href*="host="], tr.data a[href*="host="]')) {
       if (++attemptsViewWato < MAX_ATTEMPTS) setTimeout(tryAddViewWatoMenu, POLL_INTERVAL_MS);
       return;
     }
@@ -2013,7 +2014,7 @@
     const tDoc = getTargetDoc();
     if (tDoc && tDoc.body && !tDoc.body.dataset.cmkViewWatoMenu) {
       try {
-        if (/\/view\.py/.test(tDoc.location.pathname) && tDoc.querySelector('tr.data td.nobr a[href*="host="]')) {
+        if (/\/view\.py/.test(tDoc.location.pathname) && tDoc.querySelector('tr.data td.nobr a[href*="host="], tr.data a[href*="host="]')) {
           attemptsViewWato = 0;
           setTimeout(tryAddViewWatoMenu, 300);
         }
