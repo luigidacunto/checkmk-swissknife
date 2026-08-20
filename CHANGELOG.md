@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.20.1] - 2026-08-20
+
+### Fixed
+- "Configure in WATO" menu (host select + "Apri" button) did not appear on views without a dedicated Host column (e.g. "Service search" / `searchsvc`, grouped by service across hosts). Hostnames are now also recovered from any per-row link carrying a `host=` parameter when the classic Host column isn't present.
+
 ## [2.20.0] - 2026-07-31
 
 ### Added

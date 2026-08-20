@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.20.0
+// @version      2.20.1
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1174,8 +1174,14 @@
     const menues = doc.querySelector('#page_menu_bar td.menues');
     if (!menues) return;
 
+    // Views with a dedicated Host column expose it as td.nobr. Views without one
+    // (e.g. searchsvc "Service search", grouped by service across hosts) still
+    // carry host= on other per-row links (Service, Icons, Perf-O-Meter...), so
+    // fall back to any link in the row when the classic column isn't there.
+    let hostLinks = [...doc.querySelectorAll('tr.data td.nobr a[href*="host="]')];
+    if (!hostLinks.length) hostLinks = [...doc.querySelectorAll('tr.data a[href*="host="]')];
     const hosts = [...new Set(
-      [...doc.querySelectorAll('tr.data td.nobr a[href*="host="]')]
+      hostLinks
         .map(a => { const m = a.href.match(/[?&]host=([^&]+)/); return m ? decodeURIComponent(m[1]) : null; })
         .filter(Boolean)
     )];

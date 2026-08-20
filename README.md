@@ -112,6 +112,7 @@ Adds a **Select hosts (N)** dropdown and an **Open** button to the monitoring vi
 
 - Up to 50 hosts per page (keeps URLs within safe length limits)
 - Deduplicates hostnames automatically (useful on service views where hosts repeat)
+- Works even on views without a dedicated Host column (e.g. "Service search"), by recovering hostnames from any per-row link
 - **Open** button is disabled (gray) until a page is selected; turns blue when active; resets after opening
 - Only visible for users with WATO configuration access
 
