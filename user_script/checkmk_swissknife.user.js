@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.20.2
+// @version      2.21.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -831,6 +831,34 @@
 
   const HOST_DISPLAY_MAX_LEN = 32; // ~15 char typical hostname + ".ad.aruba.it" + margin
 
+  // Index of the "nobr" host column in a table.data (first tr.data whose nobr
+  // cell contains a link with a `host=` param), or -1 if none found.
+  // Shared by addInventoryButtons and the host export buttons below.
+  function findHostColIdx(table) {
+    for (const tr of table.querySelectorAll('tr.data')) {
+      const cells = [...tr.children];
+      for (let i = 0; i < cells.length; i++) {
+        if (!cells[i].classList.contains('nobr')) continue;
+        const a = cells[i].querySelector('a[href*="host="]');
+        if (!a) continue;
+        const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
+        if (h) return i;
+      }
+    }
+    return -1;
+  }
+
+  // Extracts {hostname, ip} from a host cell. IP is the title of the
+  // `<span title="x.x.x.x">` wrapping the host link, when present.
+  function extractHostCell(hostTd) {
+    const a = hostTd && hostTd.querySelector('a[href*="host="]');
+    if (!a) return null;
+    const hostname = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
+    if (!hostname) return null;
+    const ip = (hostTd.querySelector('span[title]') || {}).title || '';
+    return { hostname, ip };
+  }
+
   function addInventoryButtons(doc) {
     if (doc.body.dataset.cmkInventoryBtns === '1') return;
 
@@ -895,19 +923,7 @@
     let found = false;
 
     tables.forEach(table => {
-      // Trova indice colonna host dalla prima riga dati con link host
-      let hostColIdx = -1;
-      for (const tr of table.querySelectorAll('tr.data')) {
-        const cells = [...tr.children];
-        for (let i = 0; i < cells.length; i++) {
-          if (!cells[i].classList.contains('nobr')) continue;
-          const a = cells[i].querySelector('a[href*="host="]');
-          if (!a) continue;
-          const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
-          if (h) { hostColIdx = i; break; }
-        }
-        if (hostColIdx !== -1) break;
-      }
+      const hostColIdx = findHostColIdx(table);
       if (hostColIdx === -1) return;
 
       found = true;
@@ -936,38 +952,35 @@
         extraTd.className = 'cmk-sk-extra-td';
 
         if (hostTd && hostTd.classList.contains('nobr')) {
-          const a = hostTd.querySelector('a[href*="host="]');
-          // IP è nel title dello span che wrappa l'anchor: <span title="x.x.x.x"><a>...</a></span>
-          const ip = (hostTd.querySelector('span[title]') || {}).title || null;
-          if (a) {
-            const h = new URLSearchParams(a.getAttribute('href').split('?')[1] || '').get('host');
-            if (h) {
-              const hostname = h, shortname = h.split('.')[0];
+          const r = extractHostCell(hostTd);
+          if (r) {
+            const { hostname, ip } = r;
+            const shortname = hostname.split('.')[0];
+            const a = hostTd.querySelector('a[href*="host="]');
 
-              // Truncate the displayed name (copy buttons below always use the full `hostname`/`shortname`)
-              const displayName = a.textContent.trim();
-              if (displayName.length > HOST_DISPLAY_MAX_LEN) {
-                a.title = displayName;
-                a.textContent = displayName.slice(0, HOST_DISPLAY_MAX_LEN - 1) + '…';
-              }
-
-              const group = doc.createElement('span');
-              group.className = 'cmk-sk-btn-group';
-
-              const disc = doc.createElement('a');
-              disc.className = 'cmk-sk-inv-btn';
-              disc.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
-              disc.target = '_blank'; disc.rel = 'noopener';
-              disc.title = `Service Discovery: ${hostname}`;
-              disc.innerHTML = DISC_SVG;
-
-              group.appendChild(disc);
-              group.appendChild(mkCopy('cmk-sk-copy-btn', hostname, `Copy hostname: ${hostname}`));
-              group.appendChild(mkCopy('cmk-sk-copy-short-btn', shortname, `Copy short hostname: ${shortname}`));
-              if (ip) group.appendChild(mkCopy('cmk-sk-copy-ip-btn', ip, `Copy IP: ${ip}`));
-
-              extraTd.appendChild(group);
+            // Truncate the displayed name (copy buttons below always use the full `hostname`/`shortname`)
+            const displayName = a.textContent.trim();
+            if (displayName.length > HOST_DISPLAY_MAX_LEN) {
+              a.title = displayName;
+              a.textContent = displayName.slice(0, HOST_DISPLAY_MAX_LEN - 1) + '…';
             }
+
+            const group = doc.createElement('span');
+            group.className = 'cmk-sk-btn-group';
+
+            const disc = doc.createElement('a');
+            disc.className = 'cmk-sk-inv-btn';
+            disc.href = `wato.py?host=${encodeURIComponent(hostname)}&mode=inventory`;
+            disc.target = '_blank'; disc.rel = 'noopener';
+            disc.title = `Service Discovery: ${hostname}`;
+            disc.innerHTML = DISC_SVG;
+
+            group.appendChild(disc);
+            group.appendChild(mkCopy('cmk-sk-copy-btn', hostname, `Copy hostname: ${hostname}`));
+            group.appendChild(mkCopy('cmk-sk-copy-short-btn', shortname, `Copy short hostname: ${shortname}`));
+            if (ip) group.appendChild(mkCopy('cmk-sk-copy-ip-btn', ip, `Copy IP: ${ip}`));
+
+            extraTd.appendChild(group);
           }
         }
         tr.insertBefore(extraTd, hostTd || null);
@@ -1550,6 +1563,7 @@
   let attemptsExtraColToggle = 0;
   let attemptsHostListCopy = 0;
   let attemptsSvcExport = 0;
+  let attemptsHostExport = 0;
 
   function tryEnhanceFolderSelect() {
     const iDoc = getWatoDoc(FOLDER_SELECT_ID);
@@ -1646,6 +1660,94 @@
       return;
     }
     addViewWatoMenu(doc);
+  }
+
+  // =========================================================================
+  // FEATURE: Copy host list (view.py search results)
+  //
+  // Adds two buttons to the view.py menu bar that copy every host row on the
+  // page — hostname (FQDN) + IP, deduplicated by hostname — to the clipboard
+  // as JSON or as tab-separated FQDN/IP lines. Scans every `td.nobr` host
+  // cell in every `tr.data` of every `table.data` on the page (not a fixed
+  // column index, unlike addInventoryButtons): some views render 2 hosts
+  // per physical row as side-by-side column pairs (e.g. "searchhost" with
+  // num_columns=2), so a single hostColIdx would silently drop half the
+  // hosts. This works whether results are split across multiple tables
+  // (grouped by folder) or rendered as a single table, and regardless of
+  // how many host columns a row has. Reuses extractHostCell (hostname/IP
+  // extraction) from addInventoryButtons.
+  // =========================================================================
+
+  function collectHostRows(doc) {
+    const rows = new Map();
+    doc.querySelectorAll('table.data tr.data').forEach(tr => {
+      tr.querySelectorAll('td.nobr').forEach(td => {
+        const r = extractHostCell(td);
+        if (r && !rows.has(r.hostname)) rows.set(r.hostname, r.ip);
+      });
+    });
+    return [...rows].map(([hostname, ip]) => ({ hostname, ip }));
+  }
+
+  function addHostExportButtons(doc) {
+    if (doc.body.dataset.cmkHostExport === '1') return;
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return;
+    if (!collectHostRows(doc).length) return;
+
+    doc.body.dataset.cmkHostExport = '1';
+
+    injectStyles(doc, 'cmk-sk-host-export-style', `
+      .cmk-sk-host-export-btn {
+        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
+        cursor: pointer; background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
+      }
+      .cmk-sk-host-export-btn:hover { background: rgba(90,180,214,0.15); }
+      .cmk-sk-host-export-btn.copied { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.15); }
+    `);
+
+    function mkExportBtn(label, title, build) {
+      const btn = doc.createElement('button');
+      btn.className = 'cmk-sk-host-export-btn';
+      btn.type = 'button';
+      btn.textContent = label;
+      btn.title = title;
+      btn.addEventListener('click', () => {
+        const list = collectHostRows(doc);
+        navigator.clipboard.writeText(build(list)).then(() => {
+          const orig = btn.textContent;
+          btn.classList.add('copied');
+          btn.textContent = `Copied ${list.length} hosts`;
+          setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 1500);
+        });
+      });
+      return btn;
+    }
+
+    menues.appendChild(mkExportBtn(
+      'Copy hosts (JSON)',
+      'Copy hostname (FQDN) and IP for every host on this page as JSON',
+      list => JSON.stringify(list, null, 2)
+    ));
+    menues.appendChild(mkExportBtn(
+      'Copy hosts (TSV)',
+      'Copy hostname (FQDN) and IP for every host on this page as tab-separated lines',
+      list => ['FQDN\tIP', ...list.map(h => `${h.hostname}\t${h.ip}`)].join('\n')
+    ));
+  }
+
+  function tryAddHostExportButtons() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsHostExport < MAX_ATTEMPTS) setTimeout(tryAddHostExportButtons, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (!collectHostRows(doc).length) {
+      if (++attemptsHostExport < MAX_ATTEMPTS) setTimeout(tryAddHostExportButtons, POLL_INTERVAL_MS);
+      return;
+    }
+    addHostExportButtons(doc);
   }
 
   function tryAddWatoFolderMonitorButtons() {
@@ -1938,6 +2040,7 @@
     attemptsExtraColToggle = 0;
     attemptsHostListCopy = 0;
     attemptsSvcExport = 0;
+    attemptsHostExport = 0;
     // Folder select: self-stops if element not found, always schedules.
     setTimeout(tryEnhanceFolderSelect, 800);
     // Accordion: only on pages in ACCORDION_MODES.
@@ -1958,6 +2061,8 @@
     setTimeout(tryAddHostListCopyButton, 500);
     // WATO menu: on view.py with host rows, self-stops if not applicable.
     setTimeout(tryAddViewWatoMenu, 800);
+    // Host list export (JSON/TSV): on view.py with host rows, self-stops if not applicable.
+    setTimeout(tryAddHostExportButtons, 800);
     // Service export to Markdown: any view.py page with a services table, self-stops if not applicable.
     setTimeout(tryAddServiceExportButton, 500);
     // Auto-check foreign activation: only on mode=changelog.
@@ -2025,6 +2130,14 @@
         if (/\/view\.py/.test(tDoc.location.pathname) && findServiceTable(tDoc)) {
           attemptsSvcExport = 0;
           setTimeout(tryAddServiceExportButton, 300);
+        }
+      } catch (e) {}
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkHostExport) {
+      try {
+        if (/\/view\.py/.test(tDoc.location.pathname) && collectHostRows(tDoc).length) {
+          attemptsHostExport = 0;
+          setTimeout(tryAddHostExportButtons, 300);
         }
       } catch (e) {}
     }

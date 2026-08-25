@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.21.0] - 2026-08-25
+
+### Added
+- "Copy hosts (JSON)" and "Copy hosts (TSV)" buttons in the monitoring view menu bar, on any view.py page listing hosts (e.g. "Host search"). Copies hostname (FQDN) and IP for every host on the page — deduplicated, and correctly handling views that render 2 hosts per physical row as side-by-side column pairs — either as JSON or as tab-separated `FQDN\tIP` lines ready to paste into a spreadsheet.
+
 ## [2.20.2] - 2026-08-20
 
 ### Fixed
