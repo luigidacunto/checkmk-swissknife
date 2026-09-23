@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.21.0
+// @version      2.22.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1010,14 +1010,34 @@
     return localStorage.getItem(EXTRA_COL_STORAGE_KEY) !== '0';
   }
 
-  // Applies the persisted visibility preference: toggles the hide CSS class
-  // and resyncs groupheader colspan (base + 1 when visible, base when hidden).
-  function applyExtraColVisibility(doc) {
-    const visible = isExtraColVisible();
-    doc.body.classList.toggle('cmk-sk-extra-hidden', !visible);
-    doc.querySelectorAll('tr.groupheader td[data-cmk-sk-base-colspan]').forEach(td => {
-      td.colSpan = Number(td.dataset.cmkSkBaseColspan) + (visible ? 1 : 0);
+  // Shared by the Extra column toggle and the native Column visibility toggle
+  // (below): both hide/show whole columns of the same table.data and must
+  // agree on one final colspan per groupheader row, or they'd stomp on each
+  // other's write. Recomputed from scratch each time: base (captured before
+  // either feature touched the table) + 1 if the Extra column is visible,
+  // minus however many native columns are currently hidden.
+  function recomputeGroupheaderColspans(doc) {
+    const extraDelta = isExtraColVisible() ? 1 : 0;
+    const hidden = getHiddenColumns();
+    doc.querySelectorAll('table.data').forEach(table => {
+      const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      if (!headerRow) return;
+      const headerTexts = [...headerRow.children].map(c => c.textContent.trim());
+      let hiddenCount = 0;
+      COLUMN_DEFS.forEach(def => {
+        if (hidden.has(def.key)) hiddenCount += def.match(headerTexts).length;
+      });
+      table.querySelectorAll('tr.groupheader td[data-cmk-sk-base-colspan]').forEach(td => {
+        td.colSpan = Number(td.dataset.cmkSkBaseColspan) + extraDelta - hiddenCount;
+      });
     });
+  }
+
+  // Applies the persisted visibility preference: toggles the hide CSS class
+  // and resyncs groupheader colspan.
+  function applyExtraColVisibility(doc) {
+    doc.body.classList.toggle('cmk-sk-extra-hidden', !isExtraColVisible());
+    recomputeGroupheaderColspans(doc);
   }
 
   function addExtraColumnToggle(doc) {
@@ -1067,6 +1087,259 @@
       return;
     }
     addExtraColumnToggle(doc);
+  }
+
+
+  // =========================================================================
+  // FEATURE: Native Column Visibility Toggle
+  //
+  // Adds a "Columns" dropdown to the view.py menu bar to hide/show bulky
+  // native Checkmk columns (state, host/service icons, check command,
+  // groups, site alias) that eat horizontal space but aren't always needed.
+  // Only columns actually present on the current view are offered, each with
+  // its own ON/OFF toggle plus "Show all"/"Hide all" shortcuts. Purely
+  // visual (CSS display:none on th/td, never touches form/checkbox state),
+  // so it can't affect Save/Commands. Persisted in localStorage (shared
+  // across tabs/pages, same origin) so it applies to every monitoring view.
+  // Hiding State also tints the Service name with that row's state color
+  // (see applyStateColorTint below), so problems stay identifiable.
+  // =========================================================================
+
+  const COLUMN_VIS_STORAGE_KEY = 'cmkSkHiddenColumns';
+
+  // Each def locates its column(s) by header text + position, not a fixed
+  // index: column order varies per view. "Icons" appears twice on service
+  // views (host icons right after Host, service icons right after Service),
+  // so those two are matched by their preceding header, not by text alone.
+  const COLUMN_DEFS = [
+    { key: 'state', label: 'State', match: h => { const i = h.indexOf('State'); return i !== -1 ? [i] : []; } },
+    { key: 'siteAlias', label: 'Site alias', match: h => { const i = h.indexOf('Site alias'); return i !== -1 ? [i] : []; } },
+    // Scans every position, not just the first "Host"/"Service": views that render
+    // 2 hosts per physical row (e.g. searchhost) repeat the whole header set, so
+    // indexOf() alone would only catch the first pair and silently miss the rest.
+    { key: 'hostIcons', label: 'Host icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Host') ? acc.concat(i) : acc, []) },
+    { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Service') ? acc.concat(i) : acc, []) },
+    { key: 'checked', label: 'Checked', match: h => { const i = h.indexOf('Checked'); return i !== -1 ? [i] : []; } },
+    { key: 'checkCommand', label: 'Check command', match: h => { const i = h.indexOf('Check command'); return i !== -1 ? [i] : []; } },
+    { key: 'groups', label: 'Groups', match: h => h.reduce((acc, t, i) => t === 'Groups' ? acc.concat(i) : acc, []) },
+  ];
+
+  function getHiddenColumns() {
+    try { return new Set(JSON.parse(localStorage.getItem(COLUMN_VIS_STORAGE_KEY)) || []); }
+    catch (e) { return new Set(); }
+  }
+
+  function setHiddenColumns(set) {
+    localStorage.setItem(COLUMN_VIS_STORAGE_KEY, JSON.stringify([...set]));
+  }
+
+  const STATE_COLORS = { '0': '#4caf50', '1': '#e5a500', '2': '#e55b5b', '3': '#a078c8' };
+
+  // Whenever the State column is hidden (via the Columns dropdown, in any
+  // combination — no separate "Clean view" mode needed), the Service name is
+  // tinted with that row's state color instead, so CRIT/WARN/UNKNOWN stay
+  // visible at a glance without the column. Driven directly by the
+  // hidden-columns set. No-op (and clears prior tint) when State is visible,
+  // or on views without both a State and a Service column.
+  function applyStateColorTint(doc) {
+    const stateHidden = getHiddenColumns().has('state');
+    doc.querySelectorAll('table.data').forEach(table => {
+      const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      if (!headerRow) return;
+      const headerTexts = [...headerRow.children].map(c => c.textContent.trim());
+      const stateIdx = headerTexts.indexOf('State');
+      const svcIdx = headerTexts.indexOf('Service');
+      if (stateIdx === -1 || svcIdx === -1) return;
+      table.querySelectorAll('tr.data').forEach(tr => {
+        const cells = [...tr.children];
+        const svcLink = cells[svcIdx]?.querySelector('a') || cells[svcIdx];
+        if (!svcLink) return;
+        if (!stateHidden) { svcLink.style.removeProperty('color'); return; }
+        const stateCls = [...(cells[stateIdx]?.classList || [])].find(c => /^state\d$/.test(c));
+        const color = stateCls && STATE_COLORS[stateCls.slice(-1)];
+        if (color) svcLink.style.setProperty('color', color, 'important');
+        else svcLink.style.removeProperty('color');
+      });
+    });
+  }
+
+  // Applies the persisted hide/show set: toggles a class on every th/td at
+  // the matched index (in every row, header included), resyncs colspan, and
+  // refreshes the State color tint.
+  function applyColumnVisibility(doc) {
+    const hidden = getHiddenColumns();
+    doc.querySelectorAll('table.data').forEach(table => {
+      const headerRow = [...table.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      if (!headerRow) return;
+      const headerTexts = [...headerRow.children].map(c => c.textContent.trim());
+
+      table.querySelectorAll('tr.groupheader td[colspan]').forEach(td => {
+        if (td.dataset.cmkSkBaseColspan === undefined) td.dataset.cmkSkBaseColspan = td.colSpan;
+      });
+
+      COLUMN_DEFS.forEach(def => {
+        const doHide = hidden.has(def.key);
+        def.match(headerTexts).forEach(idx => {
+          table.querySelectorAll('tr').forEach(tr => {
+            const cell = tr.children[idx];
+            if (cell) cell.classList.toggle('cmk-sk-col-hidden', doHide);
+          });
+        });
+      });
+    });
+    recomputeGroupheaderColspans(doc);
+    applyStateColorTint(doc);
+  }
+
+  function addColumnVisibilityToggle(doc) {
+    if (doc.body.dataset.cmkColVisToggle === '1') return;
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return;
+
+    const tables = [...doc.querySelectorAll('table.data')];
+    const tableHeaderTexts = tables.map(t => {
+      const headerRow = [...t.querySelectorAll('tr')].find(tr => tr.querySelector('th'));
+      return headerRow ? [...headerRow.children].map(c => c.textContent.trim()) : [];
+    });
+    const presentDefs = COLUMN_DEFS.filter(def => tableHeaderTexts.some(h => def.match(h).length > 0));
+    if (!presentDefs.length) return;
+
+    doc.body.dataset.cmkColVisToggle = '1';
+
+    injectStyles(doc, 'cmk-sk-colvis-style', `
+      .cmk-sk-col-hidden { display: none !important; }
+      .cmk-sk-colvis-wrap { position: relative; display: inline-block; margin-left: 8px; vertical-align: middle; }
+      .cmk-sk-colvis-btn {
+        padding: 2px 8px; border-radius: 3px; font-size: 12px; cursor: pointer;
+        background: transparent; color: #ddd; border: 1px solid #888;
+      }
+      .cmk-sk-colvis-btn:hover { background: rgba(255,255,255,0.1); }
+      .cmk-sk-colvis-panel {
+        display: none; position: absolute; top: 100%; left: 0; z-index: 100;
+        background: #333; border: 1px solid #666; border-radius: 3px; padding: 6px 10px;
+        white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4); min-width: 190px;
+      }
+      .cmk-sk-colvis-panel.open { display: block; }
+      .cmk-sk-colvis-bulk { display: flex; gap: 6px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid #555; }
+      .cmk-sk-colvis-bulk-btn {
+        flex: 1; padding: 3px 6px; font-size: 11px; cursor: pointer;
+        background: #2a2a2a; color: #bbb; border: 1px solid #555; border-radius: 3px;
+      }
+      .cmk-sk-colvis-bulk-btn:hover { background: #383838; }
+      .cmk-sk-colvis-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 14px;
+        padding: 3px 0; font-size: 12px; color: #ddd;
+      }
+      .cmk-sk-colvis-toggle {
+        min-width: 34px; padding: 1px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;
+        cursor: pointer; background: #1a73e8; color: #fff; border: 1px solid #1a73e8;
+      }
+      .cmk-sk-colvis-toggle.off { background: #555; color: #ccc; border-color: #777; }
+    `);
+
+    const wrap = doc.createElement('div');
+    wrap.className = 'cmk-sk-colvis-wrap';
+
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cmk-sk-colvis-btn';
+    btn.textContent = 'Columns ▾';
+
+    const panel = doc.createElement('div');
+    panel.className = 'cmk-sk-colvis-panel';
+
+    const bulkRow = doc.createElement('div');
+    bulkRow.className = 'cmk-sk-colvis-bulk';
+    const showAllBtn = doc.createElement('button');
+    showAllBtn.type = 'button';
+    showAllBtn.className = 'cmk-sk-colvis-bulk-btn';
+    showAllBtn.textContent = 'Show all';
+    const hideAllBtn = doc.createElement('button');
+    hideAllBtn.type = 'button';
+    hideAllBtn.className = 'cmk-sk-colvis-bulk-btn';
+    hideAllBtn.textContent = 'Hide all';
+    bulkRow.appendChild(showAllBtn);
+    bulkRow.appendChild(hideAllBtn);
+    panel.appendChild(bulkRow);
+
+    // Every control below (bulk buttons, per-column toggles) mutates the
+    // same hidden-columns set, so they all call refreshAll() afterwards to
+    // stay in sync with each other and with what's actually hidden right
+    // now — never a checkbox that only reflects its own click.
+    const rowRefreshers = [];
+    function refreshAll() {
+      rowRefreshers.forEach(r => r());
+    }
+
+    presentDefs.forEach(def => {
+      const row = doc.createElement('div');
+      row.className = 'cmk-sk-colvis-row';
+      const label = doc.createElement('span');
+      label.textContent = def.label;
+      const toggle = doc.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cmk-sk-colvis-toggle';
+
+      function refreshToggle() {
+        const visible = !getHiddenColumns().has(def.key);
+        toggle.textContent = visible ? 'ON' : 'OFF';
+        toggle.className = 'cmk-sk-colvis-toggle' + (visible ? '' : ' off');
+      }
+
+      toggle.addEventListener('click', () => {
+        const set = getHiddenColumns();
+        if (set.has(def.key)) set.delete(def.key); else set.add(def.key);
+        setHiddenColumns(set);
+        applyColumnVisibility(doc);
+        refreshAll();
+      });
+
+      refreshToggle();
+      rowRefreshers.push(refreshToggle);
+      row.appendChild(label);
+      row.appendChild(toggle);
+      panel.appendChild(row);
+    });
+
+    showAllBtn.addEventListener('click', () => {
+      const set = getHiddenColumns();
+      presentDefs.forEach(def => set.delete(def.key));
+      setHiddenColumns(set);
+      applyColumnVisibility(doc);
+      refreshAll();
+    });
+    hideAllBtn.addEventListener('click', () => {
+      const set = getHiddenColumns();
+      presentDefs.forEach(def => set.add(def.key));
+      setHiddenColumns(set);
+      applyColumnVisibility(doc);
+      refreshAll();
+    });
+
+    btn.addEventListener('click', () => panel.classList.toggle('open'));
+    doc.addEventListener('click', e => {
+      if (!wrap.contains(e.target)) panel.classList.remove('open');
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(panel);
+    menues.appendChild(wrap);
+
+    applyColumnVisibility(doc);
+  }
+
+  function tryAddColumnVisibilityToggle() {
+    const doc = getTargetDoc();
+    if (!doc || !doc.body) {
+      if (++attemptsColVisToggle < MAX_ATTEMPTS) setTimeout(tryAddColumnVisibilityToggle, POLL_INTERVAL_MS);
+      return;
+    }
+    try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
+    if (!doc.querySelector('table.data')) {
+      if (++attemptsColVisToggle < MAX_ATTEMPTS) setTimeout(tryAddColumnVisibilityToggle, POLL_INTERVAL_MS);
+      return;
+    }
+    addColumnVisibilityToggle(doc);
   }
 
 
@@ -1264,6 +1537,67 @@
 
 
   // =========================================================================
+  // Shared "Export" dropdown, used by the two features below (Markdown export
+  // and Copy hosts JSON/TSV): each used to add its own separate button(s)
+  // straight to the menu bar, which got crowded once the Columns dropdown
+  // joined it. Whichever feature runs first creates the dropdown; the other
+  // just appends into its panel — idempotent via a DOM lookup, not a dataset
+  // guard, since either one (or both) may need to add to it.
+  // =========================================================================
+
+  function getExportMenu(doc) {
+    let wrap = doc.querySelector('.cmk-sk-export-wrap');
+    if (wrap) return wrap.querySelector('.cmk-sk-export-panel');
+
+    const menues = doc.querySelector('#page_menu_bar td.menues');
+    if (!menues) return null;
+
+    injectStyles(doc, 'cmk-sk-export-style', `
+      .cmk-sk-export-wrap { position: relative; display: inline-block; margin-left: 8px; vertical-align: middle; }
+      .cmk-sk-export-btn {
+        padding: 2px 8px; border-radius: 3px; font-size: 12px; cursor: pointer;
+        background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
+      }
+      .cmk-sk-export-btn:hover { background: rgba(90,180,214,0.15); }
+      .cmk-sk-export-panel {
+        display: none; position: absolute; top: 100%; left: 0; z-index: 100;
+        background: #333; border: 1px solid #666; border-radius: 3px; padding: 4px;
+        white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.4); min-width: 200px;
+      }
+      .cmk-sk-export-panel.open { display: block; }
+      .cmk-sk-export-panel button {
+        display: block; width: 100%; text-align: left; margin: 0; padding: 5px 8px;
+        font-size: 12px; background: transparent; border: none; color: #ddd;
+        cursor: pointer; border-radius: 3px;
+      }
+      .cmk-sk-export-panel button:hover { background: rgba(255,255,255,0.1); }
+      .cmk-sk-export-panel button.copied { color: #4caf50; }
+    `);
+
+    wrap = doc.createElement('div');
+    wrap.className = 'cmk-sk-export-wrap';
+
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cmk-sk-export-btn';
+    btn.textContent = 'Export ▾';
+
+    const panel = doc.createElement('div');
+    panel.className = 'cmk-sk-export-panel';
+
+    btn.addEventListener('click', () => panel.classList.toggle('open'));
+    doc.addEventListener('click', e => {
+      if (!wrap.contains(e.target)) panel.classList.remove('open');
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(panel);
+    menues.appendChild(wrap);
+    return panel;
+  }
+
+
+  // =========================================================================
   // FEATURE: Export service tables to Markdown
   //
   // On any view.py page showing a services table (identified structurally by
@@ -1391,23 +1725,13 @@
   function addServiceExportButton(doc) {
     if (doc.body.dataset.cmkSvcExport === '1') return;
     try { if (!/\/view\.py/.test(doc.location.pathname)) return; } catch (e) { return; }
-    const menues = doc.querySelector('#page_menu_bar td.menues');
-    if (!menues) return;
     if (!findServiceTable(doc)) return;
+    const panel = getExportMenu(doc);
+    if (!panel) return;
 
     doc.body.dataset.cmkSvcExport = '1';
 
-    injectStyles(doc, 'cmk-sk-svc-export-style', `
-      .cmk-sk-svc-export-btn {
-        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
-        cursor: pointer; background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
-      }
-      .cmk-sk-svc-export-btn:hover { background: rgba(90,180,214,0.15); }
-      .cmk-sk-svc-export-btn.copied { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.15); }
-    `);
-
     const btn = doc.createElement('button');
-    btn.className = 'cmk-sk-svc-export-btn';
     btn.type = 'button';
     btn.textContent = 'Export to Markdown (.md)';
     btn.title = 'Copy to clipboard and download as .md: Site, Host, IP, Display name, Summary, Details (whichever are present on this view)';
@@ -1427,7 +1751,7 @@
       });
     });
 
-    menues.appendChild(btn);
+    panel.appendChild(btn);
   }
 
   function tryAddServiceExportButton() {
@@ -1561,6 +1885,7 @@
   let attemptsSitesFilter = 0;
   let attemptsListchoice = 0;
   let attemptsExtraColToggle = 0;
+  let attemptsColVisToggle = 0;
   let attemptsHostListCopy = 0;
   let attemptsSvcExport = 0;
   let attemptsHostExport = 0;
@@ -1691,24 +2016,14 @@
 
   function addHostExportButtons(doc) {
     if (doc.body.dataset.cmkHostExport === '1') return;
-    const menues = doc.querySelector('#page_menu_bar td.menues');
-    if (!menues) return;
     if (!collectHostRows(doc).length) return;
+    const panel = getExportMenu(doc);
+    if (!panel) return;
 
     doc.body.dataset.cmkHostExport = '1';
 
-    injectStyles(doc, 'cmk-sk-host-export-style', `
-      .cmk-sk-host-export-btn {
-        margin-left: 8px; padding: 2px 8px; border-radius: 3px; font-size: 12px;
-        cursor: pointer; background: transparent; color: #5ab4d6; border: 1px solid #5ab4d6;
-      }
-      .cmk-sk-host-export-btn:hover { background: rgba(90,180,214,0.15); }
-      .cmk-sk-host-export-btn.copied { color: #4caf50; border-color: #4caf50; background: rgba(76,175,80,0.15); }
-    `);
-
     function mkExportBtn(label, title, build) {
       const btn = doc.createElement('button');
-      btn.className = 'cmk-sk-host-export-btn';
       btn.type = 'button';
       btn.textContent = label;
       btn.title = title;
@@ -1724,12 +2039,12 @@
       return btn;
     }
 
-    menues.appendChild(mkExportBtn(
+    panel.appendChild(mkExportBtn(
       'Copy hosts (JSON)',
       'Copy hostname (FQDN) and IP for every host on this page as JSON',
       list => JSON.stringify(list, null, 2)
     ));
-    menues.appendChild(mkExportBtn(
+    panel.appendChild(mkExportBtn(
       'Copy hosts (TSV)',
       'Copy hostname (FQDN) and IP for every host on this page as tab-separated lines',
       list => ['FQDN\tIP', ...list.map(h => `${h.hostname}\t${h.ip}`)].join('\n')
@@ -2038,6 +2353,7 @@
     attemptsSitesFilter = 0;
     attemptsListchoice = 0;
     attemptsExtraColToggle = 0;
+    attemptsColVisToggle = 0;
     attemptsHostListCopy = 0;
     attemptsSvcExport = 0;
     attemptsHostExport = 0;
@@ -2073,6 +2389,8 @@
     setTimeout(tryAddListChoiceFilter, 600);
     // Extra column toggle: on view.py once the Extra column exists, self-stops if not applicable.
     setTimeout(tryAddExtraColumnToggle, 700);
+    // Column visibility toggle: on any view.py table, self-stops if not applicable.
+    setTimeout(tryAddColumnVisibilityToggle, 700);
   }
 
   if (document.readyState === 'complete') {
@@ -2156,6 +2474,10 @@
     if (tDoc && tDoc.body && !tDoc.body.dataset.cmkExtraColToggle) {
       attemptsExtraColToggle = 0;
       setTimeout(tryAddExtraColumnToggle, 300);
+    }
+    if (tDoc && tDoc.body && !tDoc.body.dataset.cmkColVisToggle) {
+      attemptsColVisToggle = 0;
+      setTimeout(tryAddColumnVisibilityToggle, 300);
     }
   }).observe(document.body, { childList: true, subtree: true });
 

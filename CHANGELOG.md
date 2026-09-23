@@ -5,6 +5,14 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.0] - 2026-09-23
+
+### Added
+- "Columns" dropdown in the monitoring view menu bar, on any view.py page with a data table. Lets you hide/show native Checkmk columns that eat horizontal space but aren't always needed (State, Site alias, Host icons, Service icons, Checked, Check command, Groups) — only the columns actually present on the current view are listed, each with its own ON/OFF button plus "Show all"/"Hide all" shortcuts, so it's always clear at a glance what's currently shown. Purely visual, doesn't touch form/checkbox state; the choice is saved and applies to every view. Hiding the State column also tints the service name with that row's state color (green/amber/red/purple), so problems stay identifiable without the column.
+
+### Changed
+- "Export to Markdown (.md)", "Copy hosts (JSON)" and "Copy hosts (TSV)" are now grouped under a single "Export ▾" dropdown in the menu bar instead of three separate buttons, to keep the bar from growing too wide now that the Columns dropdown has joined it.
+
 ## [2.21.0] - 2026-08-25
 
 ### Added

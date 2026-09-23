@@ -32,8 +32,9 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **ListChoice Filter Bar** | Adds a search box, a "N / total selected" counter and a "Selected only" toggle above large checkbox lists (e.g. "Deploy custom files with agent") | `addListChoiceFilter` |
 | **Extra Column Toggle** | Adds an ON/OFF button to the menu bar to show/hide the Extra column; the choice is remembered across reloads | `addExtraColumnToggle` |
 | **Copy Host List (JSON)** | Adds a button to the menu bar that copies hostname, alias, IPv4 address and monitored site for every host in the list to the clipboard as JSON | `addHostListCopyButton` |
-| **Service Export to Markdown** | On any view.py services table (Host + Display name/Service columns), adds a button that exports a Markdown table with whichever of Site/Host/IP/Display name/Summary/Details are present, to the clipboard and as a downloaded `.md` file | `addServiceExportButton` |
-| **Copy Hosts (JSON/TSV)** | Adds two buttons to the menu bar on any view.py host list that copy hostname (FQDN) and IP for every host on the page to the clipboard, as JSON or as tab-separated lines | `addHostExportButtons` |
+| **Service Export to Markdown** | On any view.py services table (Host + Display name/Service columns), adds an "Export ▾" menu entry that exports a Markdown table with whichever of Site/Host/IP/Display name/Summary/Details are present, to the clipboard and as a downloaded `.md` file | `addServiceExportButton` |
+| **Copy Hosts (JSON/TSV)** | Adds "Copy hosts (JSON)"/"Copy hosts (TSV)" entries to the same "Export ▾" menu on any view.py host list, copying hostname (FQDN) and IP for every host on the page to the clipboard | `addHostExportButtons` |
+| **Column Visibility Toggle** | Adds a "Columns" dropdown with a per-column ON/OFF button plus "Show all"/"Hide all", to hide/show bulky native columns (State, Site alias, Host/Service icons, Checked, Check command, Groups); only columns present on the current view are listed, and the choice is remembered across reloads. Hiding State tints the service name with its state's color instead | `addColumnVisibilityToggle` |
 
 ---
 
@@ -173,16 +174,25 @@ Applies to: `wato.py?mode=folder` (folder browsing and host search results, with
 ---
 
 ### Service Export to Markdown
-On any monitoring view showing a services table — detected structurally by a **Host** column plus a **Display name**/**Service** column, not tied to one specific view — adds an **"Export to Markdown (.md)"** button to the menu bar. It turns the visible table into a standard Markdown table, one row per service, copies it to the clipboard and downloads it as a `.md` file in one click. Columns are Site, Host, IP, Display name, Summary, Details in that order, but only the ones actually present on the current view are included — a view without a Details column simply won't have one in the export. Rows are read at click time, so the export always matches what's currently on screen.
+On any monitoring view showing a services table — detected structurally by a **Host** column plus a **Display name**/**Service** column, not tied to one specific view — adds an **"Export to Markdown (.md)"** entry to the **"Export ▾"** dropdown in the menu bar. It turns the visible table into a standard Markdown table, one row per service, copies it to the clipboard and downloads it as a `.md` file in one click. Columns are Site, Host, IP, Display name, Summary, Details in that order, but only the ones actually present on the current view are included — a view without a Details column simply won't have one in the export. Rows are read at click time, so the export always matches what's currently on screen.
 
 Applies to: any `view.py` page with a services table (with or without sidebar).
 
 ---
 
 ### Copy Hosts (JSON/TSV)
-Adds **"Copy hosts (JSON)"** and **"Copy hosts (TSV)"** buttons to the menu bar on any monitoring view listing hosts (e.g. "Host search"), whether results are grouped by folder across several tables or shown as a single table. Clicking one copies hostname (FQDN) and IP for every host currently listed to the clipboard — deduplicated — either as a JSON array or as tab-separated `FQDN` / `IP` lines (with a header row) ready to paste into a spreadsheet.
+Adds **"Copy hosts (JSON)"** and **"Copy hosts (TSV)"** entries to the same **"Export ▾"** dropdown, on any monitoring view listing hosts (e.g. "Host search"), whether results are grouped by folder across several tables or shown as a single table. Clicking one copies hostname (FQDN) and IP for every host currently listed to the clipboard — deduplicated — either as a JSON array or as tab-separated `FQDN` / `IP` lines (with a header row) ready to paste into a spreadsheet.
 
 Applies to: any `view.py` page listing hosts (with or without sidebar).
+
+---
+
+### Column Visibility Toggle
+Adds a **"Columns"** dropdown to the menu bar on any monitoring view table. Each entry hides/shows one native Checkmk column — State, Site alias, Host icons, Service icons, Checked, Check command, Groups (service + host) — found by its header text, so it works on any view without being tied to one specific one. Only the columns actually present on the current view are listed, each with its own **ON/OFF** button so it's always clear at a glance what's currently shown, plus **"Show all"**/**"Hide all"** shortcuts at the top of the panel to reset everything in one click. Purely visual (CSS only, never touches form/checkbox state), and the choice is saved so it applies the same way to every monitoring view you open afterwards.
+
+Hiding the **State** column also tints the service name itself with that row's state color (green OK, amber WARN, red CRIT, purple UNKNOWN), so problems stay identifiable at a glance without the column taking up space.
+
+Applies to: any `view.py` page with a data table (with or without sidebar).
 
 ## How it works
 
