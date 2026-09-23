@@ -190,7 +190,7 @@ Applies to: any `view.py` page listing hosts (with or without sidebar).
 ### Column Visibility Toggle
 Adds a **"Columns"** dropdown to the menu bar on any monitoring view table. Each entry hides/shows one native Checkmk column — State, Site alias, Host icons, Service icons, Age, Checked, Check command, Groups (service + host) — found by its header text, so it works on any view without being tied to one specific one. Only the columns actually present on the current view are listed, each with its own **ON/OFF** button so it's always clear at a glance what's currently shown, plus **"Show all"**/**"Hide all"** shortcuts at the top of the panel to reset everything in one click. Purely visual (CSS only, never touches form/checkbox state), and the choice is saved so it applies the same way to every monitoring view you open afterwards.
 
-Hiding the **State** column also tints the service name itself with that row's state color (green OK, amber WARN, red CRIT, purple UNKNOWN), so problems stay identifiable at a glance without the column taking up space.
+Hiding the **State** column also tints the service name itself with that row's state color (Checkmk's own colors: green OK, yellow WARN, red CRIT, orange UNKNOWN), so problems stay identifiable at a glance without the column taking up space.
 
 Applies to: any `view.py` page with a data table (with or without sidebar).
 

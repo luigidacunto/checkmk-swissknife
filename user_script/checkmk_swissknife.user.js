@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.22.1
+// @version      2.22.2
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1134,7 +1134,9 @@
     localStorage.setItem(COLUMN_VIS_STORAGE_KEY, JSON.stringify([...set]));
   }
 
-  const STATE_COLORS = { '0': '#4caf50', '1': '#e5a500', '2': '#e55b5b', '3': '#a078c8' };
+  // Matches Checkmk's own state colors (.state_rounded_fill.state<N>), not an
+  // arbitrary palette, so the tint reads the same as the native badge would.
+  const STATE_COLORS = { '0': '#13d389', '1': '#ffd703', '2': '#c83232', '3': '#ff8400' };
 
   // Whenever the State column is hidden (via the Columns dropdown, in any
   // combination — no separate "Clean view" mode needed), the Service name is
