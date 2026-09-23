@@ -34,7 +34,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Copy Host List (JSON)** | Adds a button to the menu bar that copies hostname, alias, IPv4 address and monitored site for every host in the list to the clipboard as JSON | `addHostListCopyButton` |
 | **Service Export to Markdown** | On any view.py services table (Host + Display name/Service columns), adds an "Export ▾" menu entry that exports a Markdown table with whichever of Site/Host/IP/Display name/Summary/Details are present, to the clipboard and as a downloaded `.md` file | `addServiceExportButton` |
 | **Copy Hosts (JSON/TSV)** | Adds "Copy hosts (JSON)"/"Copy hosts (TSV)" entries to the same "Export ▾" menu on any view.py host list, copying hostname (FQDN) and IP for every host on the page to the clipboard | `addHostExportButtons` |
-| **Column Visibility Toggle** | Adds a "Columns" dropdown with a per-column ON/OFF button plus "Show all"/"Hide all", to hide/show bulky native columns (State, Site alias, Host/Service icons, Checked, Check command, Groups); only columns present on the current view are listed, and the choice is remembered across reloads. Hiding State tints the service name with its state's color instead | `addColumnVisibilityToggle` |
+| **Column Visibility Toggle** | Adds a "Columns" dropdown with a per-column ON/OFF button plus "Show all"/"Hide all", to hide/show bulky native columns (State, Site alias, Host/Service icons, Age, Checked, Check command, Groups); only columns present on the current view are listed, and the choice is remembered across reloads. Hiding State tints the service name with its state's color instead | `addColumnVisibilityToggle` |
 
 ---
 
@@ -188,7 +188,7 @@ Applies to: any `view.py` page listing hosts (with or without sidebar).
 ---
 
 ### Column Visibility Toggle
-Adds a **"Columns"** dropdown to the menu bar on any monitoring view table. Each entry hides/shows one native Checkmk column — State, Site alias, Host icons, Service icons, Checked, Check command, Groups (service + host) — found by its header text, so it works on any view without being tied to one specific one. Only the columns actually present on the current view are listed, each with its own **ON/OFF** button so it's always clear at a glance what's currently shown, plus **"Show all"**/**"Hide all"** shortcuts at the top of the panel to reset everything in one click. Purely visual (CSS only, never touches form/checkbox state), and the choice is saved so it applies the same way to every monitoring view you open afterwards.
+Adds a **"Columns"** dropdown to the menu bar on any monitoring view table. Each entry hides/shows one native Checkmk column — State, Site alias, Host icons, Service icons, Age, Checked, Check command, Groups (service + host) — found by its header text, so it works on any view without being tied to one specific one. Only the columns actually present on the current view are listed, each with its own **ON/OFF** button so it's always clear at a glance what's currently shown, plus **"Show all"**/**"Hide all"** shortcuts at the top of the panel to reset everything in one click. Purely visual (CSS only, never touches form/checkbox state), and the choice is saved so it applies the same way to every monitoring view you open afterwards.
 
 Hiding the **State** column also tints the service name itself with that row's state color (green OK, amber WARN, red CRIT, purple UNKNOWN), so problems stay identifiable at a glance without the column taking up space.
 

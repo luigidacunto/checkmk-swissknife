@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.22.0
+// @version      2.22.1
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1119,6 +1119,7 @@
     // indexOf() alone would only catch the first pair and silently miss the rest.
     { key: 'hostIcons', label: 'Host icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Host') ? acc.concat(i) : acc, []) },
     { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Service') ? acc.concat(i) : acc, []) },
+    { key: 'age', label: 'Age', match: h => { const i = h.indexOf('Age'); return i !== -1 ? [i] : []; } },
     { key: 'checked', label: 'Checked', match: h => { const i = h.indexOf('Checked'); return i !== -1 ? [i] : []; } },
     { key: 'checkCommand', label: 'Check command', match: h => { const i = h.indexOf('Check command'); return i !== -1 ? [i] : []; } },
     { key: 'groups', label: 'Groups', match: h => h.reduce((acc, t, i) => t === 'Groups' ? acc.concat(i) : acc, []) },
