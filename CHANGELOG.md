@@ -5,6 +5,14 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.4] - 2026-09-24
+
+### Added
+- "Site" (distinct from "Site alias") and "Reperibilità" added to the list of native columns the "Columns" dropdown can hide/show, when present on the current view.
+
+### Fixed
+- On views that render the host Icons column before the Host column instead of after (e.g. "Aruba Service problems"), the Host icons/Service icons toggles didn't find their columns — the Icons-to-Host/Service association now checks both sides regardless of order, and skips over the Extra column when it sits in between.
+
 ## [2.22.3] - 2026-09-24
 
 ### Fixed

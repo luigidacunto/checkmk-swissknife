@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.22.3
+// @version      2.22.4
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1107,21 +1107,41 @@
 
   const COLUMN_VIS_STORAGE_KEY = 'cmkSkHiddenColumns';
 
+  // "Icons" appears twice on service views (once for the host, once for the
+  // service), and its position relative to Host/Service isn't consistent
+  // across views: most views render Host, then its Icons; "ar_svc_problems"
+  // instead renders Icons, then Host. Our own injected Extra column (see
+  // addInventoryButtons) also sits between the two on views where Icons
+  // comes first, since it's always inserted right before Host. So: check the
+  // header on both sides of "Icons", stepping past "Extra" if that's what's
+  // there, and let whichever side actually names Host/Service/Display name
+  // decide ownership — never assume a fixed direction.
+  function iconsOwner(h, i) {
+    const left = h[i - 1] === 'Extra' ? h[i - 2] : h[i - 1];
+    if (left === 'Host') return 'host';
+    if (left === 'Service' || left === 'Display name') return 'svc';
+    const right = h[i + 1] === 'Extra' ? h[i + 2] : h[i + 1];
+    if (right === 'Host') return 'host';
+    if (right === 'Service' || right === 'Display name') return 'svc';
+    return null;
+  }
+
   // Each def locates its column(s) by header text + position, not a fixed
-  // index: column order varies per view. "Icons" appears twice on service
-  // views (host icons right after Host, service icons right after Service),
-  // so those two are matched by their preceding header, not by text alone.
+  // index: column order varies per view.
   const COLUMN_DEFS = [
     { key: 'state', label: 'State', match: h => { const i = h.indexOf('State'); return i !== -1 ? [i] : []; } },
     { key: 'siteAlias', label: 'Site alias', match: h => { const i = h.indexOf('Site alias'); return i !== -1 ? [i] : []; } },
+    // Distinct from "Site alias": some views (e.g. ar_svc_problems) label
+    // this column just "Site" instead, showing the site id rather than its alias.
+    { key: 'site', label: 'Site', match: h => { const i = h.indexOf('Site'); return i !== -1 ? [i] : []; } },
+    // Custom host-tag column shown as a native table column on some views
+    // (e.g. ar_svc_problems); matched by its literal displayed header text.
+    { key: 'onCall', label: 'Reperibilità', match: h => { const i = h.indexOf('Reperibilità'); return i !== -1 ? [i] : []; } },
     // Scans every position, not just the first "Host"/"Service": views that render
     // 2 hosts per physical row (e.g. searchhost) repeat the whole header set, so
     // indexOf() alone would only catch the first pair and silently miss the rest.
-    { key: 'hostIcons', label: 'Host icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Host') ? acc.concat(i) : acc, []) },
-    // "Service" is the header on most views, but some (e.g. ar_svc_problems)
-    // label it "Display name" instead — same fallback used everywhere else
-    // this codebase reads the service-name column.
-    { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && (h[i - 1] === 'Service' || h[i - 1] === 'Display name')) ? acc.concat(i) : acc, []) },
+    { key: 'hostIcons', label: 'Host icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && iconsOwner(h, i) === 'host') ? acc.concat(i) : acc, []) },
+    { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && iconsOwner(h, i) === 'svc') ? acc.concat(i) : acc, []) },
     { key: 'age', label: 'Age', match: h => { const i = h.indexOf('Age'); return i !== -1 ? [i] : []; } },
     { key: 'checked', label: 'Checked', match: h => { const i = h.indexOf('Checked'); return i !== -1 ? [i] : []; } },
     { key: 'checkCommand', label: 'Check command', match: h => { const i = h.indexOf('Check command'); return i !== -1 ? [i] : []; } },
