@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.22.2
+// @version      2.22.3
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -1118,7 +1118,10 @@
     // 2 hosts per physical row (e.g. searchhost) repeat the whole header set, so
     // indexOf() alone would only catch the first pair and silently miss the rest.
     { key: 'hostIcons', label: 'Host icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Host') ? acc.concat(i) : acc, []) },
-    { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && h[i - 1] === 'Service') ? acc.concat(i) : acc, []) },
+    // "Service" is the header on most views, but some (e.g. ar_svc_problems)
+    // label it "Display name" instead — same fallback used everywhere else
+    // this codebase reads the service-name column.
+    { key: 'svcIcons', label: 'Service icons', match: h => h.reduce((acc, t, i) => (t === 'Icons' && (h[i - 1] === 'Service' || h[i - 1] === 'Display name')) ? acc.concat(i) : acc, []) },
     { key: 'age', label: 'Age', match: h => { const i = h.indexOf('Age'); return i !== -1 ? [i] : []; } },
     { key: 'checked', label: 'Checked', match: h => { const i = h.indexOf('Checked'); return i !== -1 ? [i] : []; } },
     { key: 'checkCommand', label: 'Check command', match: h => { const i = h.indexOf('Check command'); return i !== -1 ? [i] : []; } },
@@ -1143,7 +1146,7 @@
   // tinted with that row's state color instead, so CRIT/WARN/UNKNOWN stay
   // visible at a glance without the column. Driven directly by the
   // hidden-columns set. No-op (and clears prior tint) when State is visible,
-  // or on views without both a State and a Service column.
+  // or on views without both a State and a service-name column.
   function applyStateColorTint(doc) {
     const stateHidden = getHiddenColumns().has('state');
     doc.querySelectorAll('table.data').forEach(table => {
@@ -1151,7 +1154,11 @@
       if (!headerRow) return;
       const headerTexts = [...headerRow.children].map(c => c.textContent.trim());
       const stateIdx = headerTexts.indexOf('State');
-      const svcIdx = headerTexts.indexOf('Service');
+      // Some views (e.g. ar_svc_problems) label the service name column
+      // "Display name" instead of "Service" — same fallback as findServiceColumns.
+      const svcIdx = headerTexts.indexOf('Display name') !== -1
+        ? headerTexts.indexOf('Display name')
+        : headerTexts.indexOf('Service');
       if (stateIdx === -1 || svcIdx === -1) return;
       table.querySelectorAll('tr.data').forEach(tr => {
         const cells = [...tr.children];

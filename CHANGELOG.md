@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.22.3] - 2026-09-24
+
+### Fixed
+- On views that label the service name column "Display name" instead of "Service" (e.g. "Aruba Service problems"), hiding State didn't tint the service name and the Service icons toggle didn't find its column — both now recognize "Display name" as a fallback.
+
 ## [2.22.2] - 2026-09-23
 
 ### Fixed
