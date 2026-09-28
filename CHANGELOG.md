@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.24.0] - 2026-09-28
+
+### Added
+- On rule list pages (`mode=edit_ruleset`), exact host names in a rule's "Host name" condition that are not linked to a host (i.e. the host no longer exists in Checkmk) are now highlighted in red with a tooltip. Regexes, host groups and host tags are ignored, and the highlight works for mixed conditions ("matches regex …, is host01 or matches regex …") and for negated ones ("is not" / "does not match regex").
+
 ## [2.23.0] - 2026-09-28
 
 ### Added

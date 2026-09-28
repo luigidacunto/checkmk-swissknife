@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.23.0
+// @version      2.24.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -890,6 +890,37 @@
 
     const anchor = doc.querySelector('div.foldable_wrapper') || doc.querySelector('div.wato') || rows[0].closest('table');
     if (anchor) anchor.before(bar);
+  }
+
+
+  // =========================================================================
+  // FEATURE: Missing Host Highlight
+  //
+  // In a rule's "Host name ..." condition, exact host names are rendered as a
+  // link to the host only if the host still exists; an unlinked name means the
+  // host was deleted. Those names are painted red. Regexes are ignored.
+  // =========================================================================
+
+  function highlightMissingHosts(doc) {
+    if (doc.body.dataset.cmkMissingHosts === '1') return;
+    const items = doc.querySelectorAll('tr.data li.condition');
+    if (!items.length) return;
+    doc.body.dataset.cmkMissingHosts = '1';
+
+    injectStyles(doc, 'cmk-sk-missing-host-styles', `
+      b.cmk-sk-missing-host { color: #ff4d4d !important; text-decoration: underline wavy #ff4d4d; }
+    `);
+
+    items.forEach(li => {
+      if (!li.textContent.trim().startsWith('Host name')) return;
+      li.querySelectorAll('b').forEach(b => {
+        // Text right before each <b> tells regex ("matches regex", "one of regex") from exact name ("is", "is not")
+        const before = b.previousSibling ? b.previousSibling.textContent : '';
+        if (/regex/.test(before) || b.querySelector('a')) return;
+        b.classList.add('cmk-sk-missing-host');
+        b.title = 'Host not found in Checkmk (deleted?)';
+      });
+    });
   }
 
 
@@ -2049,6 +2080,7 @@
     highlightRuleMatchStatus(doc);
     addRulesetFilterToggle(doc);
     addRulesetTextFilter(doc);
+    highlightMissingHosts(doc);
   }
 
   function tryAddInventoryButtons() {
