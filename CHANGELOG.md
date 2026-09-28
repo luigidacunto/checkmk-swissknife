@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.23.0] - 2026-09-28
+
+### Added
+- Free-text filter on every rule list page (`mode=edit_ruleset`), with or without host/service context: a search box above the list hides the rules (and folders left empty) whose row text doesn't contain the typed string, with a "N / total rules shown" counter. It is mutually exclusive with the "Relevant only" toggle: typing turns "Relevant only" off, and turning "Relevant only" on clears the search box.
+
 ## [2.22.4] - 2026-09-24
 
 ### Added

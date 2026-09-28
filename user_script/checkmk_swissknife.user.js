@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.22.4
+// @version      2.23.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -805,12 +805,90 @@
       const isActive = doc.body.classList.toggle('cmk-sk-filter-active');
       btn.classList.toggle('active', isActive);
       btn.textContent = isActive ? 'Show all' : 'Relevant only';
+      // Mutually exclusive with the free-text filter
+      const text = doc.getElementById('cmk-sk-text-filter-input');
+      if (isActive && text && text.value) {
+        text.value = '';
+        text.dispatchEvent(new Event('input'));
+      }
     });
 
     bar.appendChild(btn);
     bar.appendChild(info);
 
     const anchor = doc.querySelector('div.foldable_wrapper') || doc.querySelector('div.wato');
+    if (anchor) anchor.before(bar);
+  }
+
+
+  // =========================================================================
+  // FEATURE: Ruleset Free-Text Filter
+  //
+  // Search box on every edit_ruleset page: hides the rules (and folders left
+  // empty) whose row text does not contain the typed string. Mutually
+  // exclusive with the "Relevant only" toggle (typing turns it off, turning
+  // it on clears the box).
+  // =========================================================================
+
+  function addRulesetTextFilter(doc) {
+    if (doc.body.dataset.cmkTextFilter === '1') return;
+    const rows = doc.querySelectorAll('tr.data');
+    if (!rows.length) return;
+    doc.body.dataset.cmkTextFilter = '1';
+
+    injectStyles(doc, 'cmk-sk-text-filter-styles', `
+      #cmk-sk-text-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 10px;
+        margin: 6px 0 4px 0;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid #3a3a3a;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #999;
+        font-family: monospace;
+      }
+      #cmk-sk-text-filter-input { width: 280px; font-size: 11px; font-family: monospace; }
+      .cmk-sk-text-hidden { display: none !important; }
+    `);
+
+    const bar = doc.createElement('div');
+    bar.id = 'cmk-sk-text-filter-bar';
+
+    const input = doc.createElement('input');
+    input.id = 'cmk-sk-text-filter-input';
+    input.type = 'search';
+    input.placeholder = 'Filter rules by text…';
+
+    const info = doc.createElement('span');
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      if (q) {
+        // Mutually exclusive with "Relevant only"
+        doc.body.classList.remove('cmk-sk-filter-active');
+        const relBtn = doc.getElementById('cmk-sk-filter-toggle-btn');
+        if (relBtn) { relBtn.classList.remove('active'); relBtn.textContent = 'Relevant only'; }
+      }
+      let shown = 0;
+      rows.forEach(row => {
+        const hide = !!q && !row.textContent.toLowerCase().includes(q);
+        row.classList.toggle('cmk-sk-text-hidden', hide);
+        if (!hide) shown++;
+      });
+      doc.querySelectorAll('div.foldable_wrapper').forEach(w => {
+        const empty = !!q && !w.querySelector('tr.data:not(.cmk-sk-text-hidden)');
+        w.classList.toggle('cmk-sk-text-hidden', empty);
+      });
+      info.textContent = q ? `${shown} / ${rows.length} rules shown` : '';
+    });
+
+    bar.appendChild(input);
+    bar.appendChild(info);
+
+    const anchor = doc.querySelector('div.foldable_wrapper') || doc.querySelector('div.wato') || rows[0].closest('table');
     if (anchor) anchor.before(bar);
   }
 
@@ -1970,6 +2048,7 @@
     highlightIneffectiveRules(doc);
     highlightRuleMatchStatus(doc);
     addRulesetFilterToggle(doc);
+    addRulesetTextFilter(doc);
   }
 
   function tryAddInventoryButtons() {

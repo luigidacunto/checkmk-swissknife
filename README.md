@@ -23,6 +23,7 @@ A [Tampermonkey](https://www.tampermonkey.net/) userscript that enhances the Che
 | **Ineffective Rule Highlight** | Replaces the hard-to-spot hyphen icon on ineffective rules with a visible ⚠ badge and amber row border | `highlightIneffectiveRules` |
 | **Rule Match Status** | Colors each rule row green (match) or dimmed (no match) when a ruleset is opened with host/service context | `highlightRuleMatchStatus` |
 | **Relevant Only Filter** | Adds a "Relevant only" toggle above the rule list to hide all non-matching and non-highlighted rows | `addRulesetFilterToggle` |
+| **Ruleset Free-Text Filter** | Adds a search box above the rule list on any ruleset page to hide rules and folders whose row text doesn't contain the typed string; mutually exclusive with "Relevant only" | `addRulesetTextFilter` |
 | **Extra Column — Host Actions** | Inserts an Extra column in monitoring tables with per-host buttons: Service Discovery, copy FQDN, copy short hostname, copy IP | `addInventoryButtons` |
 | **Monitor Button in WATO Folder** | Adds a green eye icon next to each active host in WATO folder listings to open its monitoring view in a new tab | `addWatoFolderMonitorButtons` |
 | **Configure in WATO Menu** | Adds a host-selector dropdown and Open button to the monitoring view menu bar for bulk-opening hosts in WATO | `addViewWatoMenu` |
@@ -79,6 +80,13 @@ Applies to: `mode=edit_ruleset` with host/service context.
 After match/ineffective highlighting runs, a **"Relevant only"** button appears above the rule list. Clicking it hides all `✗ no match` rows, non-highlighted rows and empty folders, leaving only the matching (or ineffective) rules for the current context.
 
 Applies to: `mode=edit_ruleset` (when at least one `✓ match` or ineffective row exists).
+
+---
+
+### Ruleset Free-Text Filter
+A search box above the rule list hides every rule whose row text (conditions, value, description…) doesn't contain the typed string (case-insensitive) and every folder left with no visible rule; a counter shows "N / total rules shown". It is mutually exclusive with "Relevant only": typing in the box turns "Relevant only" off, and turning "Relevant only" on clears the box.
+
+Applies to: every `mode=edit_ruleset` page, with or without host/service context.
 
 ---
 
