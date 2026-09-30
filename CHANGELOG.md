@@ -5,6 +5,11 @@ All notable changes to **Checkmk SwissKnife** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.25.0] - 2026-09-30
+
+### Added
+- Regexes in a rule's "Host name" condition are now shown in dark orange (readable on both light and dark themes), so they are easy to tell apart from exact host names. Exact host names that still exist in Checkmk (linked) are shown in green.
+
 ## [2.24.1] - 2026-09-30
 
 ### Fixed

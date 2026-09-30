@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.24.1
+// @version      2.25.0
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -909,6 +909,8 @@
 
     injectStyles(doc, 'cmk-sk-missing-host-styles', `
       b.cmk-sk-missing-host { color: #ff4d4d !important; text-decoration: underline wavy #ff4d4d; }
+      b.cmk-sk-host-regex { color: #d35400 !important; }
+      b.cmk-sk-host-ok, b.cmk-sk-host-ok a { color: #2ea043 !important; }
     `);
 
     items.forEach(li => {
@@ -920,7 +922,8 @@
         const before = b.previousSibling ? b.previousSibling.textContent : '';
         if (/regex/.test(before)) isRegex = true;
         else if (!/^[\s,]*(or)?[\s,]*$/.test(before)) isRegex = false;
-        if (isRegex || b.querySelector('a')) return;
+        if (isRegex) { b.classList.add('cmk-sk-host-regex'); return; }
+        if (b.querySelector('a')) { b.classList.add('cmk-sk-host-ok'); return; }
         b.classList.add('cmk-sk-missing-host');
         b.title = 'Host not found in Checkmk (deleted?)';
       });
