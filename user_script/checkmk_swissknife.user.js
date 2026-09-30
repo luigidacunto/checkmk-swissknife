@@ -1,7 +1,7 @@
 ﻿// ==UserScript==
 // @name         Checkmk SwissKnife
 // @namespace    https://luigidacunto.com/
-// @version      2.24.0
+// @version      2.24.1
 // @checkmk      2.3.x - 2.4.x
 // @description  Collection of UI improvements for Checkmk WATO. Each fix or enhancement is added here as an independent feature.
 // @author       Luigi D'Acunto
@@ -913,10 +913,14 @@
 
     items.forEach(li => {
       if (!li.textContent.trim().startsWith('Host name')) return;
+      let isRegex = false;
       li.querySelectorAll('b').forEach(b => {
-        // Text right before each <b> tells regex ("matches regex", "one of regex") from exact name ("is", "is not")
+        // Text right before each <b> tells regex ("matches regex", "one of regex") from exact name ("is", "is not").
+        // A bare "," / " or " separator continues the previous mode: "matches regex A or B" → B is a regex too.
         const before = b.previousSibling ? b.previousSibling.textContent : '';
-        if (/regex/.test(before) || b.querySelector('a')) return;
+        if (/regex/.test(before)) isRegex = true;
+        else if (!/^[\s,]*(or)?[\s,]*$/.test(before)) isRegex = false;
+        if (isRegex || b.querySelector('a')) return;
         b.classList.add('cmk-sk-missing-host');
         b.title = 'Host not found in Checkmk (deleted?)';
       });
